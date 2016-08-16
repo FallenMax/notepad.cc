@@ -1,0 +1,34 @@
+{
+  "name": "notepad.cc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "bluebird": "^3.4.1",
+    "koa": "^2.0.0-alpha.5",
+    "koa-bodyparser": "^3.2.0",
+    "koa-compress": "^2.0.0",
+    "koa-logger": "^2.0.0",
+    "koa-router": "^7.0.1",
+    "koa-socket": "^4.4.0",
+    "koa-static": "^3.0.0",
+    "koa-views": "^5.0.2",
+    "mustache": "^2.2.1",
+    "nedb": "^1.8.0",
+    "randomstring": "^1.1.5"
+  },
+  "devDependencies": {
+    "async-to-gen": "^1.0.5",
+    "browser-sync": "^2.14.0",
+    "nodemon": "^1.10.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "npm run dev:server & npm run dev:client",
+    "dev:server": "nodemon index.js",
+    "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui ",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

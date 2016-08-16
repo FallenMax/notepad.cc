@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>notepad.cc</title>
+  <link rel="stylesheet" href="./style/main.css">
+  <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <script>
+    window.__id = '{{id}}'
+  </script>
+</head>
+
+<body>
+  <div class="top-bar">
+    <span id="save-status">saved</span>
+    <span id="network-status"></span>
+  </div>
+  <div class="stack">
+    <div class="layer">
+      <div class="layer">
+        <div class="layer">
+          <textarea name="editor" id="editor">{{note}}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <a class='this-page' href="{{url}}">{{url}}</a>
+  </div>
+  <script src='./script/main.js'></script>
+</body>
+
+</html>
