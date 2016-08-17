@@ -1,5 +1,5 @@
 {
-  "name": "notepad.cc",
+  "name": "notepad",
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
@@ -28,7 +28,7 @@
     "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui ",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "FallenMax@gmail.com",
   "license": "ISC",
-  "description": ""
+  "description": "A quick cover of original notepad.cc"
 }
