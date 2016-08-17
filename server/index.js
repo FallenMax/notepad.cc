@@ -23,7 +23,7 @@ app
 
 
 module.exports = function start() {
-  const port = config.port || 3000
+  const port = config.local.port || 3000
   app.listen(port)
   console.info('Listening on', port)
 }
