@@ -12,6 +12,7 @@ function Database(name) {
       timestampData: true,
       autoload: true
   })
+  db.persistence.setAutocompactionInterval(1000 * 60 * 60 * 24)
   return {
     name,
     add: item => db.insertAsync(item),
