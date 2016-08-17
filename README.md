@@ -11,7 +11,6 @@ npm install
 npm start
 
 ; Or run in watch mode
-; npm install -g nodemon browser-sync
 ; npm run dev
 
 ```
