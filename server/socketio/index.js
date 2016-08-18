@@ -14,9 +14,10 @@ module.exports = app => {
       socket.join(id)
     })
 
-    socket.on('save', async ({ id, note }) => {
+    socket.on('save', async ({ id, note }, reply) => {
       console.info(`saving note for: ${id}`);
       await notes.upsert({ id, note })
+      reply({ code: 'success' })
       socket.to(id).broadcast.emit('updated note', { note });
     })
   });

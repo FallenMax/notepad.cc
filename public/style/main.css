@@ -92,7 +92,7 @@ a.this-page:active {
 #save-status {
   color: #84878c;
   opacity: 0;
-  transition: opacity 2s;
+  transition: opacity 1s;
 }
 #save-status.show {
   opacity: 1;
