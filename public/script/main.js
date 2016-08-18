@@ -7,11 +7,12 @@ start()
 function start() {
   startSyncNote()
   startMonitorNetwork()
+  startServiceWorker()
 }
 
 function startMonitorNetwork() {
   let events = {
-    'connect':'',
+    'connect': '',
     'reconnect': '',
     'reconnect_attempt': 'Connection lost',
     'connect_error': 'Connection lost',
@@ -38,9 +39,9 @@ function startSyncNote() {
   function save(note) {
     clearTimeout(timer)
     status.classList.add('show')
-    socket.emit('save', JSON.stringify({ id, note }), function (rsp) {
+    socket.emit('save', JSON.stringify({ id, note }), function(rsp) {
       if (rsp && rsp.code === 'success') {
-        setTimeout(() => status.classList.remove('show') , 2000)
+        setTimeout(() => status.classList.remove('show'), 2000)
       }
     })
   }
@@ -56,3 +57,15 @@ function startSyncNote() {
   }
 }
 
+
+function startServiceWorker() {
+  if (location.protocol === 'https:' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./serviceWorker.js')
+      .then(function(reg) {
+        console.info('[sw] register')
+      })
+      .catch(function(err) {
+        console.error('[sw] Failed to register service worker. ', err)
+      })
+  }
+}
