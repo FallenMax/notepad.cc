@@ -13,7 +13,8 @@ router
       id,
       host,
       url: `http://${host}${port == 80 ? '' : (':'+port)}/${id}`,
-      note: note && note.note || ''
+      note: note && note.note || '',
+      dev: process.env.NODE_ENV === 'dev'
     });
   })
 

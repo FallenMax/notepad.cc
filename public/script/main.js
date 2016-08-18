@@ -1,6 +1,6 @@
-const io = window.io
-const id = window.__id
-const socket = io()
+var io = window.io
+var id = window.__id
+var socket = io()
 
 start()
 
@@ -9,11 +9,11 @@ function start() {
   startMonitorNetwork()
   startServiceWorker()
 
-  socket.emit('enter', { id })
+  socket.emit('enter', { id: id })
 }
 
 function startMonitorNetwork() {
-  let events = {
+  var events = {
     'connect': '',
     'reconnect': '',
     'reconnect_attempt': 'Connection lost',
@@ -22,42 +22,46 @@ function startMonitorNetwork() {
     'reconnect_error': 'Connection lost',
     'reconnect_failed': 'Connection lost',
   }
-  let status = document.getElementById('network-status')
+  var status = document.getElementById('network-status')
 
-  Object.keys(events).forEach(evt => socket.on(evt, function() {
-    status.textContent = events[evt]
-  }))
+  Object.keys(events).forEach(function(evt) {
+    return socket.on(evt, function() {
+      status.textContent = events[evt]
+    })
+  })
 }
 
 function startSyncNote() {
-  const editor = document.getElementById('editor')
-  let status = document.getElementById('save-status')
-  let timer
+  var editor = document.getElementById('editor')
+  var status = document.getElementById('save-status')
+  var timer
 
-  editor.addEventListener('input', throttle(e => {
+  editor.addEventListener('input', throttle(function(e) {
     save(e.target.value)
   }, 500))
 
-  socket.on('updated note', function({ note }) {
-    editor.value = note
+  socket.on('updated note', function(update) {
+    editor.value = update.note
   })
 
   function save(note) {
     clearTimeout(timer)
     status.classList.add('show')
-    socket.emit('save', { id, note }, function(rsp) {
+    socket.emit('save', { id: id, note: note }, function(rsp) {
       if (rsp && rsp.code === 'success') {
-        setTimeout(() => status.classList.remove('show'), 1000)
+        setTimeout(function() {
+          return status.classList.remove('show')
+        }, 1000)
       }
     })
   }
 
   function throttle(fn, delay) {
-    let timer
-    return function timerThrottled(...args) {
+    var timer
+    return function throttled(arg) {
       clearTimeout(timer)
       timer = setTimeout(function() {
-        fn(...args)
+        fn(arg)
       }, delay)
     }
   }

@@ -24,7 +24,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "npm run dev:server & npm run dev:client",
-    "dev:server": "nodemon index.js",
+    "dev:server": "NODE_ENV=dev nodemon index.js",
     "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui ",
     "test": "echo 'no tests'"
   },
