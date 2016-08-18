@@ -1,5 +1,5 @@
 const Database = require('../lib/database')
-const randomstring = require("randomstring")
+const randomstring = require('randomstring')
 const notes = Database('notes')
 
 module.exports = {

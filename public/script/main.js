@@ -8,6 +8,8 @@ function start() {
   startSyncNote()
   startMonitorNetwork()
   startServiceWorker()
+
+  socket.emit('enter', {id})
 }
 
 function startMonitorNetwork() {
@@ -36,10 +38,14 @@ function startSyncNote() {
     save(e.target.value)
   }, 500))
 
+  socket.on('updated note', function({note}) {
+    editor.value = note
+  })
+
   function save(note) {
     clearTimeout(timer)
     status.classList.add('show')
-    socket.emit('save', JSON.stringify({ id, note }), function(rsp) {
+    socket.emit('save', { id, note }, function(rsp) {
       if (rsp && rsp.code === 'success') {
         setTimeout(() => status.classList.remove('show'), 2000)
       }

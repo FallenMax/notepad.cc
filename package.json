@@ -9,12 +9,12 @@
     "koa-compress": "^2.0.0",
     "koa-logger": "^2.0.0",
     "koa-router": "^7.0.1",
-    "koa-socket": "^4.4.0",
     "koa-static": "^3.0.0",
     "koa-views": "^5.0.2",
     "mustache": "^2.2.1",
     "nedb": "^1.8.0",
-    "randomstring": "^1.1.5"
+    "randomstring": "^1.1.5",
+    "socket.io": "^1.4.8"
   },
   "devDependencies": {
     "async-to-gen": "^1.0.5",

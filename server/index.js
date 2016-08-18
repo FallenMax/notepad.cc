@@ -11,7 +11,6 @@ const api = require('./socketio')
 const config = require('../config')
 
 app.context.config = config
-api(app)
 app
   .use(logger())
   .use(compress())
@@ -19,11 +18,14 @@ app
   .use(views(__dirname + '/views', { map: { html: 'mustache' } }))
   .use(serveStatic('public'))
   .use(router.routes())
-
+api(app)
+app.on('error', err =>
+  console.error(err)
+)
 
 
 module.exports = function start() {
   const port = config.local.port || 3000
-  app.listen(port)
+  app.server.listen(port)
   console.info('Listening on', port)
 }

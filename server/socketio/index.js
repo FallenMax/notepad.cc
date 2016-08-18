@@ -1,19 +1,24 @@
-const IO = require('koa-socket')
+const IO = require('socket.io')
 const notes = require('../service/note')
+const http = require('http')
 
 module.exports = app => {
 
-  const io = new IO()
-  io.attach(app)
-  io.use(async (ctx, next) => {
-    ctx.data = JSON.parse(ctx.data)
-    await next()
-  })
-  io.on('save', async (ctx) => {
-    let { id, note } = ctx.data
-    console.info(`saving note for: ${id}`);
-    await notes.upsert({ id, note })
-    ctx.acknowledge({ code: 'success'})
-  })
+  app.server = http.Server(app.callback())
+  const io = IO(app.server)
+
+  io.on('connection', function(socket) {
+
+    socket.on('enter', async ({ id }) => {
+      console.log("id ", id);
+      socket.join(id)
+    })
+
+    socket.on('save', async ({ id, note }) => {
+      console.info(`saving note for: ${id}`);
+      await notes.upsert({ id, note })
+      socket.to(id).broadcast.emit('updated note', { note });
+    })
+  });
 
 }
