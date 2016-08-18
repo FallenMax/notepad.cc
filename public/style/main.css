@@ -17,6 +17,14 @@ body {
   right: 5em;
   bottom: 4em;
 }
+@media (max-width: 450px) {
+  .stack {
+    position: fixed;
+    left: 1em;
+    right: 1em;
+    top: 3em;
+  }
+}
 
 .layer {
   position: absolute;
@@ -48,8 +56,8 @@ body {
 
 .bottom-bar {
   position: fixed;
-  left: 5em;
-  right: 5em;
+  left: 0em;
+  right: 0em;
   bottom: 2em;
   text-align: center;
 }
@@ -68,11 +76,19 @@ a.this-page:active {
 
 .top-bar {
   position: fixed;
-  left: 5em;
-  right: 5em;
+  left: calc(5em - 6px);
+  right: calc(5em - 6px);
   top: 2em;
   text-align: right;
 }
+@media (max-width: 450px) {
+  .top-bar {
+    left: calc(1em - 6px);
+    right: calc(1em - 6px);
+    top: 1em;
+  }
+}
+
 #save-status {
   color: #84878c;
   opacity: 0;
