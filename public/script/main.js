@@ -9,7 +9,6 @@ function start() {
   startMonitorNetwork()
   startServiceWorker()
 
-  socket.emit('enter', { id: id })
 }
 
 function startMonitorNetwork() {
@@ -36,13 +35,16 @@ function startSyncNote() {
   var status = document.getElementById('save-status')
   var timer
 
-  editor.addEventListener('input', throttle(function(e) {
+  // listen on update from others
+  socket.emit('subscribe', { id }) // tell server we are to receive update for ${id}
+  socket.on('updated note', function({ note }) {
+    editor.value = note
+  })
+
+  // save updated note to server
+  editor.addEventListener('input', throttle(e => {
     save(e.target.value)
   }, 500))
-
-  socket.on('updated note', function(update) {
-    editor.value = update.note
-  })
 
   function save(note) {
     clearTimeout(timer)

@@ -9,8 +9,7 @@ module.exports = app => {
 
   io.on('connection', function(socket) {
 
-    socket.on('enter', async ({ id }) => {
-      console.log("id ", id);
+    socket.on('subscribe', async ({ id }) => {
       socket.join(id)
     })
 
