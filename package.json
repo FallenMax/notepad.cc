@@ -26,7 +26,7 @@
     "dev": "npm run dev:server & npm run dev:client",
     "dev:server": "nodemon index.js",
     "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui ",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo 'no tests'"
   },
   "author": "FallenMax@gmail.com",
   "license": "ISC",

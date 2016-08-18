@@ -1,0 +1,5 @@
+deployment:
+  production:
+    branch: master
+    commands:
+      - scripts/deploy.sh
