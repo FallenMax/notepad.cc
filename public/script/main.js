@@ -36,11 +36,11 @@ function startSyncNote() {
   var timer
 
   // listen on update from others
-  socket.emit('subscribe', { id }) // tell server we are to receive update for ${id}
+  socket.emit('subscribe', { id: id }) // tell server we are to receive update for ${id}
   socket.on('updated note', update)
 
   // save updated note to server
-  editor.addEventListener('input', throttle(e => {
+  editor.addEventListener('input', throttle(function (e) {
     save(e.target.value)
   }, 500))
 
