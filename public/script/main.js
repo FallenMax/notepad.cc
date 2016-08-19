@@ -37,9 +37,7 @@ function startSyncNote() {
 
   // listen on update from others
   socket.emit('subscribe', { id }) // tell server we are to receive update for ${id}
-  socket.on('updated note', function({ note }) {
-    editor.value = note
-  })
+  socket.on('updated note', update)
 
   // save updated note to server
   editor.addEventListener('input', throttle(e => {
@@ -56,6 +54,47 @@ function startSyncNote() {
         }, 1000)
       }
     })
+  }
+
+  function update(msg) {
+    var nextCaretPos = caretPosAfterUpdate(editor.value, msg.note, editor.selectionStart)
+    editor.value = msg.note
+    editor.setSelectionRange(nextCaretPos, nextCaretPos)
+
+    function caretPosAfterUpdate(prevStr, nextStr, prevCaretPos) {
+      var prevLen = prevStr.length
+      var nextLen = nextStr.length
+      var nextCaretPos // TODO
+
+      var commonStart = commonLenFromStart(prevStr, nextStr)
+      var commonEnd = commonLenFromStart(reverse(prevStr), reverse(nextStr))
+
+      if (commonStart === Math.max(prevLen, nextLen)) {
+        nextCaretPos = prevCaretPos
+      } else {
+        if (prevCaretPos < commonStart) {
+          nextCaretPos = prevCaretPos
+        } else if (prevCaretPos <= prevLen - commonEnd) {
+          nextCaretPos = nextLen - commonEnd
+        } else {
+          nextCaretPos = nextLen - (prevLen - prevCaretPos)
+        }
+      }
+      return nextCaretPos
+    }
+
+    function commonLenFromStart(a, b) {
+      var i = 0
+      var minLen = Math.min(a.length, b.length)
+      while (i < minLen && a[i] === b[i]) {
+        i++
+      }
+      return i
+    }
+
+    function reverse(str) {
+      return str.split('').reverse().join('')
+    }
   }
 
   function throttle(fn, delay) {
