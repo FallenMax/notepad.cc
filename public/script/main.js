@@ -40,7 +40,7 @@ function startSyncNote() {
   socket.on('updated note', update)
 
   // save updated note to server
-  editor.addEventListener('input', throttle(function (e) {
+  editor.addEventListener('input', throttle(function(e) {
     save(e.target.value)
   }, 500))
 
@@ -64,7 +64,7 @@ function startSyncNote() {
     function caretPosAfterUpdate(prevStr, nextStr, prevCaretPos) {
       var prevLen = prevStr.length
       var nextLen = nextStr.length
-      var nextCaretPos // TODO
+      var nextCaretPos
 
       var commonStart = commonLenFromStart(prevStr, nextStr)
       var commonEnd = commonLenFromStart(reverse(prevStr), reverse(nextStr))
