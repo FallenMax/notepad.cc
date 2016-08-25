@@ -25,7 +25,7 @@ app.on('error', err =>
 
 
 module.exports = function start() {
-  const port = config.local.port || 3000
+  const port = config.port || 3000
   app.server.listen(port)
   console.info('Listening on', port)
 }

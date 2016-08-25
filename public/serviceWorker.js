@@ -1,7 +1,8 @@
-const CACHE_NAME = 'v5'
+const CACHE_NAME = 'v6'
 const urlsToCache = [
   '/style/main.css',
   '/script/main.js',
+  '/vendor/socket.io-1.4.5.js',
   '/image/bg.png'
 ]
 

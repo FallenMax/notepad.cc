@@ -3,37 +3,42 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>{{host}}/{{id}} - online notepad</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  {{#dev}}
-    <script src="//liriliri.github.io/eruda/eruda.min.js"></script>
-    <script>eruda.init()</script>
-  {{/dev}}
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, initial-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Notepad">
+  <meta name="theme-color" content="#edeef0">
+  <title>{{id}} · notepad</title>
   <link rel="stylesheet" href="./style/main.css">
-  <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <link rel="manifest" href="./manifest.json">
+  <!--<link rel="apple-touch-icon" href="images/icons/icon-152x152.png">-->
+  <!--<link rel="icon" sizes="192x192" href="nice-highres.png">-->
   <script>
     window.__id = '{{id}}'
   </script>
+  <script src='./vendor/socket.io-1.4.5.js' defer></script>
+  <script src='./script/main.js' defer></script>
 </head>
 
 <body>
-  <div class="top-bar">
-    <span id="save-status">saving</span>
-    <span id="network-status"></span>
-  </div>
-  <div class="stack">
-    <div class="layer">
+  <main>
+    <header>
+      <small id="save-status">saving</small>
+      <small id="network-status"></small>
+    </header>
+    <section>
       <div class="layer">
         <div class="layer">
-          <textarea name="editor" id="editor">{{note}}</textarea>
+          <div class="layer">
+            <textarea name="editor" id="editor">{{note}}</textarea>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="bottom-bar">
-    <a class='this-page' href="{{url}}">{{url}}</a>
-  </div>
-  <script src='./script/main.js'></script>
+    </section>
+    <footer>
+      <small><a id='this-page' class='this-page'></a></small>
+    </footer>
+  </main>
 </body>
 
 </html>

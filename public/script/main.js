@@ -5,21 +5,26 @@ var socket = io()
 start()
 
 function start() {
+  updatePageURI()
   startSyncNote()
   startMonitorNetwork()
   startServiceWorker()
+}
 
+function updatePageURI() {
+  var link = document.getElementById('this-page')
+  link.href = link.textContent = location.href
 }
 
 function startMonitorNetwork() {
   var events = {
     'connect': '',
     'reconnect': '',
-    'reconnect_attempt': 'Connection lost',
-    'connect_error': 'Connection lost',
-    'connect_timeout': 'Connection lost',
-    'reconnect_error': 'Connection lost',
-    'reconnect_failed': 'Connection lost',
+    'reconnect_attempt': 'connection lost',
+    'connect_error': 'connection lost',
+    'connect_timeout': 'connection lost',
+    'reconnect_error': 'connection lost',
+    'reconnect_failed': 'connection lost',
   }
   var status = document.getElementById('network-status')
 
