@@ -107,8 +107,7 @@ footer {
   justify-content: center;
 }
 
-@media (max-width: 700px),
-(orientation:landscape) {
+@media (max-width: 700px) {
   footer {
     height: 2em;
   }
