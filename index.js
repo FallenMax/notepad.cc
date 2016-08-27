@@ -1,2 +1,6 @@
 require('async-to-gen/register')
-require('./server')()
+const build = require('./build')
+const startServer = require('./server')
+
+
+build(startServer)
