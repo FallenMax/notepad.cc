@@ -39,15 +39,17 @@ function startSyncNote() {
   var editor = document.getElementById('editor')
   var status = document.getElementById('save-status')
   var timer
+  var saveThrottled = throttle(function(e) {
+    save(e.target.value)
+  }, 500)
 
   // listen on update from others
   socket.emit('subscribe', { id: id }) // tell server we are to receive update for ${id}
   socket.on('updated note', update)
 
   // save updated note to server
-  editor.addEventListener('input', throttle(function(e) {
-    save(e.target.value)
-  }, 500))
+  editor.addEventListener('input', saveThrottled)
+  editor.addEventListener('compositionend', saveThrottled)
 
   function save(note) {
     clearTimeout(timer)
