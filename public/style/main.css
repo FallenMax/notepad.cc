@@ -92,6 +92,7 @@ header {
   padding: 1em 1.5em;
   color: #333;
   font-size: 1.1em;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 700px) {
