@@ -4,7 +4,6 @@
   "main": "index.js",
   "dependencies": {
     "bluebird": "^3.4.1",
-    "diff-match-patch": "^1.0.0",
     "koa": "^2.0.0-alpha.5",
     "koa-bodyparser": "^3.2.0",
     "koa-compress": "^2.0.0",
