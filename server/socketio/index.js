@@ -7,18 +7,33 @@ module.exports = app => {
   app.server = http.Server(app.callback())
   const io = IO(app.server)
 
+
   io.on('connection', function(socket) {
 
-    socket.on('subscribe', async ({ id }) => {
-      socket.join(id)
+    socket.on('subscribe', async function({ id }) {
+      if (!socket.rooms[id]) {
+        socket.join(id);
+      }
     })
 
-    socket.on('save', async ({ id, note }, reply) => {
-      console.info(`saving note for: ${id}`);
-      await notes.upsert({ id, note })
-      reply({ code: 'success' })
-      socket.to(id).broadcast.emit('updated note', { note });
+    socket.on('get', async function({ id }, reply) {
+      console.info(`fetching note for: ${id}`);
+      let note = await notes.find({ id }) || await notes.init({ id })
+      reply(note)
     })
-  });
+
+    socket.on('save', async function(msg, reply) {
+      const { id } = msg
+      console.info(`saving note for: ${msg.id}`);
+      const { error, notification } = await notes.upsert(msg)
+      if (!error) {
+        reply({})
+        socket.to(msg.id).broadcast.emit('updated note', notification);
+      } else {
+        console.warn(error);
+        reply({ error })
+      }
+    })
+  })
 
 }

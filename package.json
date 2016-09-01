@@ -4,6 +4,7 @@
   "main": "index.js",
   "dependencies": {
     "bluebird": "^3.4.1",
+    "diff-match-patch": "^1.0.0",
     "koa": "^2.0.0-alpha.5",
     "koa-bodyparser": "^3.2.0",
     "koa-compress": "^2.0.0",
@@ -13,20 +14,28 @@
     "koa-views": "^5.0.2",
     "mustache": "^2.2.1",
     "nedb": "^1.8.0",
+    "node-diff3": "0.0.1",
     "randomstring": "^1.1.5",
-    "socket.io": "^1.4.8"
+    "socket.io": "^1.4.8",
+    "string-hash": "^1.1.0"
   },
   "devDependencies": {
     "async-to-gen": "^1.0.5",
     "browser-sync": "^2.14.0",
+    "buble": "^0.13.1",
     "nodemon": "^1.10.0",
+    "rollup": "^0.34.10",
+    "rollup-plugin-buble": "^0.13.0",
+    "rollup-plugin-commonjs": "^3.3.1",
+    "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-uglify": "^1.0.1",
     "sw-precache": "^4.0.0"
   },
   "scripts": {
     "start": "NODE_ENV=production node index.js",
     "dev": "npm run dev:server & npm run dev:client",
-    "dev:server": "NODE_ENV=dev nodemon index.js --ignore public/service-worker.js",
-    "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui ",
+    "dev:server": "NODE_ENV=dev nodemon index.js --ignore 'public/**/*.*' ",
+    "dev:client": "browser-sync start --proxy  'localhost:3000' --port 3001 --files 'public' --ws --no-ui --no-ghost-mode ",
     "test": "echo 'no tests'"
   },
   "author": "FallenMax@gmail.com",

@@ -12,6 +12,7 @@ const config = require('../config')
 
 app.context.config = config
 app
+  .use(error())
   .use(logger())
   .use(compress())
   .use(bodyParser())
@@ -19,13 +20,21 @@ app
   .use(serveStatic('public'))
   .use(router.routes())
 api(app)
-app.on('error', err =>
-  console.error(err)
-)
 
 
 module.exports = function start() {
   const port = config.port || 3000
   app.server.listen(port)
   console.info('Listening on', port)
+}
+
+
+function error() {
+  return async function(ctx, next) {
+    try {
+      await next();
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }

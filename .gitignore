@@ -2,3 +2,4 @@ node_modules
 *.log
 data/*
 public/service-worker.js
+public/script/bundle.js

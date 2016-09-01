@@ -7,10 +7,10 @@ let cache = {}
 
 
 function Database(name) {
-  let db =  cache[name] || new Datastore({
-      filename: path.resolve(__dirname, '../../data/', name),
-      timestampData: true,
-      autoload: true
+  let db = cache[name] || new Datastore({
+    filename: path.resolve(__dirname, '../../data/', name),
+    timestampData: true,
+    autoload: true
   })
   db.persistence.setAutocompactionInterval(1000 * 60 * 60)
   return {
@@ -23,7 +23,7 @@ function Database(name) {
     remove: query => db.removeAsync(query),
     removeMulti: query => db.removeAsync(query, { multi: true }),
     update: (query, item) => db.updateAsync(query, item),
-    upsert: (query, item) => db.updateAsync(query, item, {upsert: true})
+    upsert: (query, item) => db.updateAsync(query, item, { upsert: true })
   }
 }
 

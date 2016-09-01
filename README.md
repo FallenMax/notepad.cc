@@ -1,6 +1,6 @@
 # A quick cover of notepad.cc
 
-using Koa/NeDB/Socket.IO
+This was intended to be a simple & minimal copy of notepad.cc, yet it has become something over-engineered...
 
 ## Demo
 
