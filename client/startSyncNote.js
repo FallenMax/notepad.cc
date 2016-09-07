@@ -25,6 +25,7 @@ export default function startSyncNote({ id, socket }) {
   subscribeUpdate()
   setInterval(subscribeUpdate, 1000 * 60) // keep connection alive to receive updates
   $update.subscribe(update)
+  pull()
 
   window.addEventListener('beforeunload', function(e) {
     if (editor.value !== $remoteNote()) {
