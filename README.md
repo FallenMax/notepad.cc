@@ -1,12 +1,19 @@
 # A quick cover of notepad.cc
 
-This was intended to be a simple & minimal copy of notepad.cc, yet it has become something over-engineered...
-
 ## Demo
 
 http://notepad.1976f.com/
 
-## Build
+## Features
+
+- (Original) *notepad.cc* style & function
+  + No register, notepad is created and associated with URL path
+  + Save as you type
+- Enhanced sync/collaboration
+  + Only transfer changed parts (saving bandwidth on mobile)
+  + Modifications are synchronized to other clients and merged smartly, so no one's modification will be lost
+
+## Start
 
 ```shell
 
