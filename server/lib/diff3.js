@@ -1,18 +1,28 @@
 const { patch, merge, diffPatch, stripPatch } = require('node-diff3').diff
 
 module.exports = {
-  applyPatch: (a, p) => patch(a, decompress(p)).join(''),
+  applyPatch: (a, p) => fromArr(patch(toArr(a), decompress(p))),
   merge3: (a, o, b) => {
-    let { conflict, result } = merge(a, o, b)
-    return conflict ? null : result.join('')
+    let { conflict, result } = merge(toArr(a), toArr(o), toArr(b))
+    return conflict ? null : fromArr(result)
   },
-  createPatch: (a, b) => compress(stripPatch(diffPatch(a, b)))
+  createPatch: (a, b) => compress(stripPatch(diffPatch(toArr(a), toArr(b))))
+}
+
+
+
+function toArr(str) {
+  return str.split('\n')
+}
+
+function fromArr(str) {
+  return str && str.join('\n')
 }
 
 function compress(patch) {
   return patch.map(({ file1: { offset, length }, file2: { chunk } }) => ({
     a: [offset, length],
-    b: chunk.join('')
+    b: chunk
   }))
 }
 
@@ -23,7 +33,7 @@ function decompress(patch) {
       length: a[1]
     },
     file2: {
-      chunk: b.split('')
+      chunk: b
     }
   }))
 }
