@@ -1,4 +1,5 @@
-const { patch, merge, diffPatch, stripPatch } = require('node-diff3').diff
+const { patch, diffPatch, stripPatch } = require('node-diff3').diff
+const diff3merge = require('diff3');
 
 module.exports = {
   applyPatch: (a, p) => fromArr(patch(toArr(a), decompress(p))),
@@ -9,7 +10,12 @@ module.exports = {
   createPatch: (a, b) => compress(stripPatch(diffPatch(toArr(a), toArr(b))))
 }
 
-
+const merge = (a, o, b) => {
+  const results = diff3merge(a, o, b)
+  const conflict = results.some(r => r.conflict)
+  const result = results[0].ok
+  return { conflict, result }
+}
 
 function toArr(str) {
   return str.split('\n')

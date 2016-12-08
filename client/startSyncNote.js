@@ -120,7 +120,7 @@ export default function startSyncNote({ id, socket }) {
       const prevWithCaret = '' +
         prev.substring(0, prevCaretPos) +
         caretSymbol +
-        prev.substring(prevCaretPos + 1, prev.length)
+        prev.substring(prevCaretPos, prev.length)
       const nextWithCaret = merge3(next, prev, prevWithCaret)
       return nextWithCaret != null ? nextWithCaret.indexOf(caretSymbol) : next.length
     }
