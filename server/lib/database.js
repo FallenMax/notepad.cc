@@ -1,18 +1,23 @@
-const promisifyAll = require('bluebird').promisifyAll
+const { promisifyAll } = require('./promisify')
 const Datastore = require('nedb')
 const path = require('path')
-promisifyAll(Datastore.prototype)
 
 let cache = {}
 
-
 function Database(name) {
-  let db = cache[name] || new Datastore({
-    filename: path.resolve(__dirname, '../../data/', name),
-    timestampData: true,
-    autoload: true
-  })
+  cache[name] = cache[name] ||
+    promisifyAll(
+      new Datastore({
+        filename: path.resolve(__dirname, '../../data/', name),
+        timestampData: true,
+        autoload: true
+      })
+    )
+
+  const db = cache[name]
+
   db.persistence.setAutocompactionInterval(1000 * 60 * 60)
+
   return {
     name,
     add: item => db.insertAsync(item),
