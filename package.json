@@ -28,8 +28,7 @@
     "rollup-plugin-buble": "^0.13.0",
     "rollup-plugin-commonjs": "^3.3.1",
     "rollup-plugin-node-resolve": "^2.0.0",
-    "rollup-plugin-uglify": "^1.0.1",
-    "sw-precache": "^4.0.0"
+    "rollup-plugin-uglify": "^1.0.1"
   },
   "scripts": {
     "start": "NODE_ENV=production node index.js",
