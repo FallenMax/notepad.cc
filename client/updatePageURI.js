@@ -1,4 +1,4 @@
-export default function updatePageURI({ href }) {
+module.exports = function updatePageURI({ href }) {
   const link = document.getElementById('this-page')
-  link.href = link.textContent = href
+  link.href = (link.textContent = href)
 }

@@ -1,139 +1,207 @@
-import { createPatch, applyPatch, merge3 } from '../server/lib/diff3'
-import hashString from 'string-hash'
-import Stream from './stream'
+const { createPatch, applyPatch, merge3 } = require('../server/lib/diff3')
+const hashString = require('string-hash')
 
-
-export default function startSyncNote({ id, socket }) {
-
-  const status = document.getElementById('save-status')
-  const editor = document.getElementById('editor')
-  const $update = Stream.fromEvent(socket, 'updated note')
-  const $remoteNote = Stream(editor.textContent)
-  const $stagedNote = Stream.combine(
-      Stream.fromEvent(editor, 'input'),
-      Stream.fromEvent(editor, 'compositionend'),
-      () => null
-    )
-    .throttle(500)
-    .map(() => editor.value)
-  const $editorSource = Stream(editor.textContent)
-  const $isSaving = Stream(false)
-  $editorSource.subscribe(writeToEditor)
-  $stagedNote.subscribe(save)
-  $isSaving.subscribe(updateStatusText)
-
-  subscribeUpdate()
-  setInterval(subscribeUpdate, 1000 * 60) // keep connection alive to receive updates
-  $update.subscribe(update)
-  pull()
-
-  window.addEventListener('beforeunload', function(e) {
-    if (editor.value !== $remoteNote()) {
-      const confirmationMessage = 'Changes you made are not saved'
-      e.returnValue = confirmationMessage
-      return confirmationMessage
-    }
-  })
-
-
-  function subscribeUpdate() {
-    socket.emit('subscribe', { id })
+class NoteManager {
+  constructor({ $editor, socket, id }) {
+    this.$status = document.getElementById('save-status')
+    this.$editor = $editor
+    this.socket = socket
+    this.id = id
+    this.remoteNote = $editor.value // a copy of remote version
+    this.statusTimer = null
+    this._isSaving = false
+    this._isCompositing = false
+    this._compositionDefers = []
   }
 
-  function updateStatusText(isSaving) {
+  start() {
+    const onInput = debounce(e => this.onInput(e), 500)
+    this.$editor.addEventListener('input', e => {
+      if (!this.isCompositing) {
+        onInput(e)
+      }
+    })
+    this.$editor.addEventListener('compositionstart', e => {
+      this.isCompositing = true
+    })
+    this.$editor.addEventListener('compositionend', e => {
+      this.isCompositing = false
+      onInput(e)
+    })
+
+    this.socket.emit('subscribe', { id: this.id })
+    this.socket.on('updated note', update => this.onUpdate(update))
+  }
+
+  get isCompositing() {
+    return this._isCompositing
+  }
+
+  set isCompositing(isCompositing) {
+    this._isCompositing = isCompositing
+    if (isCompositing) {
+      this._compositionDefers.forEach(resolve => resolve(true))
+      this._compositionDefers = []
+    }
+  }
+
+  waitCompositionEnd() {
+    return new Promise(resolve => {
+      if (!this.isCompositing) {
+        resolve(true)
+      } else {
+        this._compositionDefers.push(resolve)
+      }
+    })
+  }
+
+  get isSaving() {
+    return this._isSaving
+  }
+
+  set isSaving(isSaving) {
+    clearTimeout(this.statusTimer)
+    this._isSaving = isSaving
     if (isSaving) {
-      status.classList.add('show')
+      this.$status.classList.add('show')
     } else {
-      setTimeout(() => status.classList.remove('show'), 1000)
+      this.statusTimer = setTimeout(
+        () => this.$status.classList.remove('show'),
+        1000
+      )
     }
   }
 
-  function save(note) {
-    if ($isSaving() === false && note !== $remoteNote()) {
-      $isSaving(true)
+  saveToServer(note) {
+    return new Promise((resolve, reject) => {
+      this.isSaving = true
       const msg = {
-        id: id,
-        p: createPatch($remoteNote(), note),
+        id: this.id,
+        p: createPatch(this.remoteNote, note),
         h: hashString(note)
       }
-      socket.emit('save', msg, onResponse)
-    }
-
-    function onResponse({ error } = {}) {
-      $isSaving(false)
-      if (!error) {
-        $remoteNote(note)
-      } else {
-        console.info('note is outdated, now pulling from server')
-        pull({ callback: saveImmediately })
-      }
-    }
-
-    function saveImmediately(merged) {
-      $stagedNote(merged)
-    }
+      this.socket.emit('save', msg, ({ error } = {}) => {
+        this.isSaving = false
+        if (!error) {
+          return resolve(note)
+        } else {
+          return reject(error)
+        }
+      })
+    })
   }
 
-  function update({ h: hash, p: patch }) {
-    let latestRemote = applyPatch($remoteNote(), patch)
-    if (isConsistent(latestRemote, hash)) {
-      if ($remoteNote() === editor.value) {
-        $remoteNote(latestRemote)
-        $editorSource(latestRemote)
-      } else {
-        pull({ latestRemote })
-      }
-    } else {
-      pull()
-    }
-  }
+  loadToEditor(note) {
+    const $editor = this.$editor
+    const nextCaretPos = getNextCaretPos($editor.value, note, $editor)
+    $editor.value = note
+    $editor.setSelectionRange(nextCaretPos, nextCaretPos)
 
-  function pull({ callback, latestRemote } = {}) {
-    if (latestRemote == null) {
-      socket.emit('get', { id }, ({ note }) => mergeEditorWith(note))
-    } else {
-      mergeEditorWith(latestRemote)
-    }
-
-    function mergeEditorWith(latestRemote) {
-      let merged = merge3(latestRemote, $remoteNote(), editor.value)
-      if (merged == null) {
-        console.warn('failed to merge with remote version, discarding local version :(')
-      } else {
-        console.info('merged with remote version :)')
-      }
-      merged = merged != null ? merged : latestRemote // let user resolve conflict or just keep it simple?
-      $remoteNote(latestRemote)
-      $editorSource(merged)
-      if (callback) { callback(merged) }
-    }
-  }
-
-  function writeToEditor(next) {
-    const nextCaretPos = getNextCaretPos(editor.value, next, editor)
-    editor.value = next
-    editor.setSelectionRange(nextCaretPos, nextCaretPos)
-
-    function getNextCaretPos(prev, next, editor) {
+    function getNextCaretPos(prev, next, $editor) {
       const caretSymbol = genUniqCaret(next, prev)
-      const prevCaretPos = editor.selectionStart
+      const prevCaretPos = $editor.selectionStart
       const prevWithCaret = '' +
         prev.substring(0, prevCaretPos) +
         caretSymbol +
         prev.substring(prevCaretPos, prev.length)
       const nextWithCaret = merge3(next, prev, prevWithCaret)
-      return nextWithCaret != null ? nextWithCaret.indexOf(caretSymbol) : next.length
+      return nextWithCaret != null
+        ? nextWithCaret.indexOf(caretSymbol)
+        : next.length
     }
   }
+
+  fetchRemote() {
+    return new Promise((resolve, reject) => {
+      this.socket.emit(
+        'get',
+        { id: this.id },
+        ({ note } = {}) =>
+          note != null ? resolve(note) : reject(new Error('empty response'))
+      )
+    })
+  }
+
+  rebase(newRemoteNote) {
+    return this.waitCompositionEnd().then(() => {
+      if (this.remoteNote === this.$editor.value) {
+        this.loadToEditor(newRemoteNote)
+      } else {
+        const merged = merge3(
+          newRemoteNote,
+          this.remoteNote,
+          this.$editor.value
+        )
+        if (merged == null) {
+          console.warn(
+            'failed to merge with remote version, discarding local version :('
+          )
+          this.loadToEditor(newRemoteNote)
+        } else {
+          console.info('merged with remote version :)')
+          this.loadToEditor(merged)
+        }
+      }
+      this.remoteNote = newRemoteNote
+    })
+  }
+
+  onInput(e) {
+    const { remoteNote } = this
+    const note = this.$editor.value
+    if (!this.isSaving && note !== remoteNote) {
+      this.saveToServer(note).then(
+        note => this.remoteNote = note,
+        error => {
+          this.fetchRemote()
+            .then(newRemoteNote => this.rebase(newRemoteNote))
+            .then(() => {
+              this.saveToServer(this.$editor.value)
+            })
+        }
+      )
+    }
+  }
+
+  onUpdate({ h: hash, p: patch }) {
+    let newRemoteNote = applyPatch(this.remoteNote, patch)
+    Promise.resolve(
+      verify(newRemoteNote, hash) ? newRemoteNote : this.fetchRemote()
+    ).then(newRemoteNote => this.rebase(newRemoteNote))
+  }
 }
+
+module.exports = ({ id, socket }) => {
+  const noteManager = new NoteManager({
+    id,
+    socket,
+    $editor: document.getElementById('editor')
+  })
+  noteManager.start()
+};
 
 function genUniqCaret(...strs) {
   let caretList = ['☠', '☮', '☯', '♠', '\u0000'] // i don't think any one will use last one
   let i = 0
-  while (strs.join('').indexOf(caretList[i]) !== -1) { i++ }
+  while (strs.join('').indexOf(caretList[i]) !== -1) {
+    i++
+  }
   return caretList[i]
 }
 
-function isConsistent(str, hash) {
+function verify(str, hash) {
   return str != null && hashString(str) === hash
+}
+
+function debounce(fn, delay) {
+  let timer
+  return function(arg) {
+    clearTimeout(timer)
+    timer = setTimeout(
+      () => {
+        fn(arg)
+      },
+      delay
+    )
+  };
 }

@@ -1,5 +1,5 @@
 const { patch, diffPatch, stripPatch } = require('node-diff3').diff
-const diff3merge = require('diff3');
+const diff3merge = require('diff3')
 
 module.exports = {
   applyPatch: (a, p) => fromArr(patch(toArr(a), decompress(p))),

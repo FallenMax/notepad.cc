@@ -20,6 +20,7 @@ module.exports = function() {
     .then(function(bundle) {
       return bundle.write({
         format: 'iife',
+        moduleName: 'app',
         dest: 'public/script/bundle.js'
       })
     })
