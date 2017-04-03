@@ -39,7 +39,7 @@ class NoteManager {
 
   set isCompositing(isCompositing) {
     this._isCompositing = isCompositing
-    if (isCompositing) {
+    if (!isCompositing) {
       this._compositionDefers.forEach(resolve => resolve(true))
       this._compositionDefers = []
     }
@@ -178,15 +178,11 @@ module.exports = ({ id, socket }) => {
     $editor: document.getElementById('editor')
   })
   noteManager.start()
-};
+}
 
 function genUniqCaret(...strs) {
   let caretList = ['☠', '☮', '☯', '♠', '\u0000'] // i don't think any one will use last one
-  let i = 0
-  while (strs.join('').indexOf(caretList[i]) !== -1) {
-    i++
-  }
-  return caretList[i]
+  return caretList.find(v => strs.every(str => !str.includes(v)))
 }
 
 function verify(str, hash) {
@@ -203,5 +199,5 @@ function debounce(fn, delay) {
       },
       delay
     )
-  };
+  }
 }
