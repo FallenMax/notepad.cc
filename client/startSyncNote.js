@@ -2,23 +2,24 @@ const { createPatch, applyPatch, merge3 } = require('../server/lib/diff3')
 const hashString = require('string-hash')
 const Stream = require('./stream.js')
 
-let _log = console.log
-console.log = function(name, stream) {
-  if (stream && stream.subscribe) {
-    stream.subscribe(val =>
-      _log.call(
-        console,
-        `%c${name.trim()}:`,
-        'color:blue;font-weight:bold',
-        val
-      )
-    )
-  } else if (arguments.length === 2) {
-    _log.call(console, `%c${name}`, 'color:red;font-weight:bold', stream)
-  } else {
-    _log.apply(console, arguments)
-  }
-}
+// DEBUG
+// let _log = console.log
+// console.log = function(name, stream) {
+//   if (stream && stream.subscribe) {
+//     stream.subscribe(val =>
+//       _log.call(
+//         console,
+//         `%c${name.trim()}:`,
+//         'color:blue;font-weight:bold',
+//         val
+//       )
+//     )
+//   } else if (arguments.length === 2) {
+//     _log.call(console, `%c${name}`, 'color:red;font-weight:bold', stream)
+//   } else {
+//     _log.apply(console, arguments)
+//   }
+// }
 
 module.exports = ({ id, socket }) => {
   const $editor = document.getElementById('editor')
@@ -35,7 +36,7 @@ module.exports = ({ id, socket }) => {
   const compositing$ = compositingStream().unique()
   const notCompositing$ = compositing$.map(comp => !comp)
   const input$ = Stream.fromEvent($editor, 'input')
-  const commonParent$ = Stream($editor.value)
+  const commonParent$ = Stream($editor.value) // the 'o' in threeWayMerge(a,o,b)
 
   // remote => local
   const updateLocal$ = remoteNote$.until(notCompositing$)
@@ -45,14 +46,14 @@ module.exports = ({ id, socket }) => {
   const isSaving$ = Stream(false)
 
   //------ effects --------
-  updateLocal$.subscribe(mergeToEditor)
+  updateLocal$.subscribe(mergeToEditor, false)
 
   isRemoteNoteStale$.unique().filter(Boolean).subscribe(fetchNote)
 
   savePending$
     .until(notCompositing$)
     .map(() => $editor.value)
-    .subscribe(saveToRemote)
+    .subscribe(saveToRemote, false)
 
   isSaving$.unique().subscribe(updateSaveStatus)
 
@@ -140,7 +141,7 @@ module.exports = ({ id, socket }) => {
 
   function saveToRemote(note) {
     const remoteNote = remoteNote$()
-    if (note !== remoteNote) {
+    if (!isSaving$() && note !== remoteNote) {
       isSaving$(true)
       const msg = {
         id: id,
@@ -148,8 +149,9 @@ module.exports = ({ id, socket }) => {
         h: hashString(note)
       }
       socket.emit('save', msg, ({ error }) => {
+        isSaving$(false)
         if (!error) {
-          isSaving$(false)
+          commonParent$(note)
           remoteNote$(note)
         } else {
           isRemoteNoteStale$(true)
