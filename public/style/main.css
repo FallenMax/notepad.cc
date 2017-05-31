@@ -11,33 +11,26 @@ body {
   padding: 0;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-}
-
-*:focus {
   outline: none;
 }
 
 main {
   display: flex;
   flex-direction: column;
-  margin-left: 3em;
-  margin-right: 3em;
+  align-items: stretch;
+  margin: 0 auto;
+  padding: 0 1rem;
   height: 100%;
-}
-
-@media (max-width: 700px) {
-  main {
-    margin-left: 1em;
-    margin-right: 1em;
-  }
+  max-width: 66em;
 }
 
 section {
   display: flex;
   flex-grow: 1;
-  align-self: stretch;
   margin: 7px;
 }
 
