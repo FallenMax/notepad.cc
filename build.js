@@ -11,7 +11,7 @@ module.exports = function() {
     .rollup({
       entry: 'client/index.js',
       plugins: [
-        nodeResolve({ jsnext: true, main: true }),
+        nodeResolve({ main: true, browser: true }),
         commonjs(),
         buble(),
         isProd && uglify()
