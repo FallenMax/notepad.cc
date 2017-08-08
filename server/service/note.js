@@ -15,18 +15,14 @@ setInterval(removeEmptyNotes, 1000 * 60 * 60)
 module.exports = api
 
 async function upsert({ id, p: patch, h: hash }) {
-  try {
-    const existNote = (await Notes.findOne({ _id: id })) ||
-      (await api.init({ id }))
-    const newNote = applyPatch(existNote.note, patch)
-    if (newNote == null || hash !== hashString(newNote)) {
-      return { error: 'HASH_MISMATCH' }
-    } else {
-      await Notes.upsert({ _id: id }, { _id: id, note: newNote })
-      return { notification: { h: hash, p: patch } }
-    }
-  } catch (e) {
-    return { error: (e && e.message) || 'UNKNOWN_ERROR' }
+  const existNote =
+    (await Notes.findOne({ _id: id })) || (await api.init({ id }))
+  const newNote = applyPatch(existNote.note, patch)
+  if (newNote == null || hash !== hashString(newNote)) {
+    throw { errcode: 'HASH_MISMATCH' }
+  } else {
+    await Notes.upsert({ _id: id }, { _id: id, note: newNote })
+    return { h: hash, p: patch }
   }
 }
 

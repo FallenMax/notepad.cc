@@ -13,18 +13,22 @@ module.exports = server => {
 
     socket.on('get', async function({ id }, reply) {
       console.info(`fetching note for: ${id}`)
-      let note = (await notes.find({ id })) || (await notes.init({ id }))
-      reply(note)
+      try {
+        let note = (await notes.find({ id })) || (await notes.init({ id }))
+        reply(note)
+      } catch (error) {
+        console.error(error)
+        reply({ error })
+      }
     })
 
     socket.on('save', async function(msg, reply) {
-      const { id } = msg
       console.info(`saving note for: ${msg.id}`)
-      const { error, notification } = await notes.upsert(msg)
-      if (!error) {
+      try {
+        const notification = await notes.upsert(msg)
         reply({})
         socket.to(msg.id).broadcast.emit('updated note', notification)
-      } else {
+      } catch (error) {
         console.warn(error)
         reply({ error })
       }

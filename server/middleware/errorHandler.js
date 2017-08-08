@@ -7,7 +7,9 @@ module.exports = function error() {
       await next()
     } catch (e) {
       console.error(e)
-      ctx.response.body = isDev ? e.message || JSON.stringify(e) : 'error'
+      ctx.response.body = isDev
+        ? (e && e.message) || JSON.stringify(e)
+        : 'error'
       ctx.response.status = 500
     }
   }

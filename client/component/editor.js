@@ -123,7 +123,7 @@ module.exports = {
           p: createPatch(remoteNote, note),
           h: hashString(note)
         }
-        socket.emit('save', msg, ({ error }) => {
+        socket.emit('save', msg, ({ error } = {}) => {
           isSaving$(false)
           if (!error) {
             commonParent$(note)
