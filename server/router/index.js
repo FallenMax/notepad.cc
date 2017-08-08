@@ -7,8 +7,7 @@ router.get('/', async function(ctx, next) {
 
 router.get('/:id', async function(ctx, next) {
   const id = ctx.params.id
-  const { note } = (await notes.find({ id })) || { note: '' }
-  await ctx.render('app.html', { id, note })
+  await ctx.render('app.html', { id })
 })
 
 module.exports = router
