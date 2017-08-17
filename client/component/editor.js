@@ -151,7 +151,7 @@ module.exports = {
     return false
   },
   view() {
-    return m('textarea#editor')
+    return m('textarea#editor', '(Loading...)')
   }
 }
 
