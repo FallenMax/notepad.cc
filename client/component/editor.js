@@ -23,13 +23,16 @@ module.exports = {
     const updateLocal$ = remoteNote$.until(notCompositing$)
 
     // local => remote
-    const savePending$ = input$.debounce(500)
+    const savePending$ = input$.debounce(2000)
     const isSaving$ = Stream(false)
 
     //------ effects --------
     updateLocal$.subscribe(mergeToEditor, false)
 
-    isRemoteNoteStale$.unique().filter(Boolean).subscribe(fetchNote)
+    isRemoteNoteStale$
+      .unique()
+      .filter(Boolean)
+      .subscribe(fetchNote)
 
     savePending$
       .until(notCompositing$)
