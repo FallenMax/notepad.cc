@@ -26,6 +26,8 @@ module.exports = {
     const savePending$ = input$.debounce(2000)
     const isSaving$ = Stream(false)
 
+    const editorDirty$ = editorDirtyStream(input$, isSaving$)
+
     //------ effects --------
     updateLocal$.subscribe(mergeToEditor, false)
 
@@ -40,6 +42,8 @@ module.exports = {
       .subscribe(saveToRemote, false)
 
     isSaving$.unique().subscribe(onStatusChange)
+
+    editorDirty$.subscribe(setBeforeunloadPrompt)
 
     //------- trigger fist fetch ---------
     isRemoteNoteStale$(true)
@@ -147,6 +151,28 @@ module.exports = {
         compositing$(false)
       })
       return compositing$
+    }
+
+    function editorDirtyStream(input$, $isSaving) {
+      const $dirty = Stream(false)
+      input$.subscribe(() => $dirty(true))
+      $isSaving.filter(s => !s).subscribe(() => $dirty(false))
+      return $dirty
+    }
+
+    function beforeunloadPrompt(e) {
+      var confirmationMessage = 'Your change has not been saved, quit?'
+
+      e.returnValue = confirmationMessage // Gecko, Trident, Chrome 34+
+      return confirmationMessage // Gecko, WebKit, Chrome <34
+    }
+
+    function setBeforeunloadPrompt(isDirty) {
+      if (isDirty) {
+        window.addEventListener('beforeunload', beforeunloadPrompt)
+      } else {
+        window.removeEventListener('beforeunload', beforeunloadPrompt)
+      }
     }
   },
   onbeforeupdate() {
