@@ -23,7 +23,7 @@ module.exports = {
     const updateLocal$ = remoteNote$.until(notCompositing$)
 
     // local => remote
-    const savePending$ = input$.debounce(2000)
+    const savePending$ = input$.debounce(500)
     const isSaving$ = Stream(false)
 
     const editorDirty$ = editorDirtyStream(input$, isSaving$)
