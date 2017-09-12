@@ -70,6 +70,9 @@ module.exports = {
       socket.emit('get', { id: id }, ({ note } = {}) => {
         if (note != null && isRemoteNoteStale$()) {
           remoteNote$(note)
+          if (dom.disabled) {
+            dom.disabled = false
+          }
         }
       })
     }
@@ -180,7 +183,7 @@ module.exports = {
     return false
   },
   view() {
-    return m('textarea#editor', '(Loading...)')
+    return m('textarea#editor', { disabled: true }, '(Loading...)')
   }
 }
 
