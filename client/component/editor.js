@@ -131,7 +131,7 @@ module.exports = {
         const msg = {
           id: id,
           p: createPatch(remoteNote, note),
-          h: hashString(note)
+          h: hashString(note),
         }
         socket.emit('save', msg, ({ error } = {}) => {
           isSaving$(false)
@@ -184,7 +184,7 @@ module.exports = {
   },
   view() {
     return m('textarea#editor', { disabled: true }, '(Loading...)')
-  }
+  },
 }
 
 // --------- helpers -----------

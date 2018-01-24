@@ -5,12 +5,13 @@ const path = require('path')
 let cache = {}
 
 function Database(name) {
-  cache[name] = cache[name] ||
+  cache[name] =
+    cache[name] ||
     promisifyAll(
       new Datastore({
         filename: path.resolve(__dirname, '../../data/', name),
         timestampData: true,
-        autoload: true
+        autoload: true,
       })
     )
 
@@ -28,7 +29,7 @@ function Database(name) {
     remove: query => db.removeAsync(query),
     removeMulti: query => db.removeAsync(query, { multi: true }),
     update: (query, item) => db.updateAsync(query, item),
-    upsert: (query, item) => db.updateAsync(query, item, { upsert: true })
+    upsert: (query, item) => db.updateAsync(query, item, { upsert: true }),
   }
 }
 

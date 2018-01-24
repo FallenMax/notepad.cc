@@ -7,7 +7,7 @@ const api = {
   init: ({ id }) => ({ _id: id, note: '' }),
   find: ({ id }) => Notes.findOne({ _id: id }),
   upsert,
-  randomId
+  randomId,
 }
 
 setInterval(removeEmptyNotes, 1000 * 60 * 60)
@@ -37,6 +37,6 @@ function randomId() {
     length: 8,
     readable: true,
     charset: 'alphabetic',
-    capitalization: 'lowercase'
+    capitalization: 'lowercase',
   })
 }

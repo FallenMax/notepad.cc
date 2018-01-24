@@ -70,7 +70,7 @@ const proto = {
     })
 
     return until$
-  }
+  },
 }
 
 function Stream(init) {
@@ -101,7 +101,7 @@ Stream.combine = function(...streams) {
       },
       flush() {
         combined$.flush()
-      }
+      },
     }
     s.addDependent(dependent)
   })
