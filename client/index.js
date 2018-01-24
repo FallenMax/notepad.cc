@@ -1,4 +1,4 @@
-const socket = require('socket.io-client')()
+const socket = window.io()
 const Editor = require('./component/editor')
 const m = require('mithril')
 const id = window.id
@@ -18,7 +18,7 @@ const App = {
       connect_error: 'connection lost',
       connect_timeout: 'connection lost',
       reconnect_error: 'connection lost',
-      reconnect_failed: 'connection lost'
+      reconnect_failed: 'connection lost',
     }
     Object.keys(events).forEach(evt =>
       socket.on(evt, () => {
@@ -46,28 +46,24 @@ const App = {
       'main',
       m('header', [
         m('small#save-status', { class: this.saveStatusClass }, 'saving'),
-        m('small#network-status', this.networkStatus)
+        m('small#network-status', this.networkStatus),
       ]),
-      m(
-        'section',
-        m(
-          '.layer',
-          m(
-            '.layer',
-            m(
-              '.layer',
+      m('section', [
+        m('.layer', [
+          m('.layer', [
+            m('.layer', [
               m(Editor, {
                 socket,
                 id,
-                onStatusChange: this.onSaveStatusChange.bind(this)
-              })
-            )
-          )
-        )
-      ),
+                onStatusChange: this.onSaveStatusChange.bind(this),
+              }),
+            ]),
+          ]),
+        ]),
+      ]),
       m('footer', m('small', m('a.this-page', { href }, href)))
     )
-  }
+  },
 }
 
 m.mount(document.body, App)

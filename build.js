@@ -9,19 +9,19 @@ const isProd = process.env.NODE_ENV === 'production'
 module.exports = function() {
   return rollup
     .rollup({
-      entry: 'client/index.js',
+      input: 'client/index.js',
       plugins: [
         nodeResolve({ main: true, browser: true }),
         commonjs(),
         buble(),
-        isProd && uglify()
-      ].filter(Boolean)
+        isProd && uglify(),
+      ].filter(Boolean),
     })
     .then(function(bundle) {
       return bundle.write({
         format: 'iife',
-        moduleName: 'app',
-        dest: 'public/script/bundle.js'
+        name: 'app',
+        file: 'public/script/bundle.js',
       })
     })
 }
