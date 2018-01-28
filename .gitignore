@@ -1,5 +1,6 @@
 node_modules
 *.log
 data/*
+scripts/*
 public/service-worker.js
 public/script/bundle.js
