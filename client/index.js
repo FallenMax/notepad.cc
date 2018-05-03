@@ -61,7 +61,10 @@ const App = {
           ]),
         ]),
       ]),
-      m('footer', m('small', m('a.this-page', { href }, href)))
+      m(
+        'footer',
+        m('small', m('a.this-page', { href }, decodeURIComponent(href)))
+      )
     )
   },
 }
