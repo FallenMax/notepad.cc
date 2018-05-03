@@ -139,7 +139,13 @@ module.exports = {
             commonParent$(note)
             remoteNote$(note)
           } else {
-            isRemoteNoteStale$(true)
+            if (error.errcode === 'HASH_MISMATCH') {
+              isRemoteNoteStale$(true)
+            } else if (error.errcode === 'EXCEEDED_MAX_SIZE') {
+              window.alert(
+                'Note exceeded max size (100,000 characters), please do not abuse this free service.'
+              )
+            }
           }
         })
       }

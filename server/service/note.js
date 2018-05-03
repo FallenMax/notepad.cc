@@ -14,16 +14,20 @@ setInterval(removeEmptyNotes, 1000 * 60 * 60)
 
 module.exports = api
 
+const NOTE_MAX_SIZE = 100000
+
 async function upsert({ id, p: patch, h: hash }) {
   const existNote =
     (await Notes.findOne({ _id: id })) || (await api.init({ id }))
   const newNote = applyPatch(existNote.note, patch)
   if (newNote == null || hash !== hashString(newNote)) {
     throw { errcode: 'HASH_MISMATCH' }
-  } else {
-    await Notes.upsert({ _id: id }, { _id: id, note: newNote })
-    return { h: hash, p: patch }
   }
+  if (newNote.length > NOTE_MAX_SIZE) {
+    throw { errcode: 'EXCEEDED_MAX_SIZE' }
+  }
+  await Notes.upsert({ _id: id }, { _id: id, note: newNote })
+  return { h: hash, p: patch }
 }
 
 async function removeEmptyNotes() {
