@@ -89,6 +89,7 @@ header {
   border: none;
   padding: 1em 1.5em;
   color: #333;
+  line-height: 1.5;
   font-size: 1.1em;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'PingFangSC',
     'Roboto', 'Hiragino Sans GB', 'Helvetica Neue', 'Arial', 'STHeiti',
