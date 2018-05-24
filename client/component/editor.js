@@ -189,7 +189,11 @@ module.exports = {
     return false
   },
   view() {
-    return m('textarea#editor', { disabled: true }, '(Loading...)')
+    return m(
+      'textarea#editor',
+      { disabled: true, spellcheck: 'false' },
+      '(Loading...)'
+    )
   },
 }
 
