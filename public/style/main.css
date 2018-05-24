@@ -91,12 +91,7 @@ header {
   color: #333;
   line-height: 1.5;
   font-size: 1.1em;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'PingFangSC',
-    'Roboto', 'Hiragino Sans GB', 'Helvetica Neue', 'Arial', 'STHeiti',
-    'Microsoft YaHei', 'Microsoft JhengHei', 'Source Han Sans SC',
-    'Noto Sans CJK SC', 'Source Han Sans CN', 'Noto Sans SC',
-    'Source Han Sans TC', 'Noto Sans CJK TC', 'WenQuanYi Micro Hei', SimSun,
-    sans-serif;
+  font-family: monospace;
   -webkit-overflow-scrolling: touch;
 }
 
