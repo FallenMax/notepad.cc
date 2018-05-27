@@ -17,6 +17,7 @@ module.exports = {
     const compositing$ = compositingStream().unique()
     const notCompositing$ = compositing$.map(comp => !comp)
     const input$ = Stream.fromEvent($editor, 'input')
+    const keydown$ = Stream.fromEvent($editor, 'keydown')
     const commonParent$ = Stream($editor.value) // the 'o' in threeWayMerge(a,o,b)
 
     // remote => local
@@ -29,6 +30,8 @@ module.exports = {
     const editorDirty$ = editorDirtyStream(input$, isSaving$)
 
     //------ effects --------
+    keydown$.subscribe(mutateInput)
+
     updateLocal$.subscribe(mergeToEditor, false)
 
     isRemoteNoteStale$
@@ -49,6 +52,21 @@ module.exports = {
     isRemoteNoteStale$(true)
 
     return
+
+    function mutateInput(e) {
+      if (e.code === 'Tab' && !e.isComposing) {
+        const content = $editor.value
+        const selectionStart = $editor.selectionStart
+        const newContent =
+          content.slice(0, selectionStart) +
+          '  ' +
+          content.slice(selectionStart)
+        $editor.value = newContent
+        $editor.setSelectionRange(selectionStart + 2, selectionStart + 2)
+        e.preventDefault()
+        input$()
+      }
+    }
 
     function remoteNoteStream() {
       const remoteNote$ = Stream($editor.value)
