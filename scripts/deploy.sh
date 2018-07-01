@@ -6,7 +6,7 @@ ssh root@128.199.240.2 -p9999 << EOF
   git pull
   npm install
   npm run build
-  pm2 restart pm2.json
+  pm2 startOrRestart pm2.json
 EOF
 echo 'done deploy'
 
