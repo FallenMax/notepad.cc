@@ -1,17 +1,35 @@
-const socket = window.io()
-const Editor = require('./component/editor')
-const m = require('mithril')
-const id = window.id
-const href = location.href
+import m from 'mithril'
+import SocketClient from 'socket.io-client'
+import { Editor } from './component/editor'
+import './style/main.css'
+const socket = SocketClient()
+
+const getId = (): string => {
+  return decodeURIComponent(location.pathname.slice(1))
+}
 
 const App = {
+  id: '',
   networkStatus: '',
   saveStatusClass: '',
-  saveStatusTimer: null,
+  saveStatusTimer: undefined as number | undefined,
 
-  oninit() {
-    // monitor network
-    const events = {
+  oninit(): void {
+    this.id = getId()
+    document.title = `${this.id} · notepad`
+    this.startMonitorNetwork()
+  },
+
+  startMonitorNetwork() {
+    type NetworkEvent =
+      | 'connect'
+      | 'reconnect'
+      | 'reconnect_attempt'
+      | 'connect_error'
+      | 'connect_timeout'
+      | 'reconnect_error'
+      | 'reconnect_failed'
+    const events: { [key in NetworkEvent]: string } = {
       connect: '',
       reconnect: '',
       reconnect_attempt: 'connection lost',
@@ -22,19 +40,19 @@ const App = {
     }
     Object.keys(events).forEach(evt =>
       socket.on(evt, () => {
-        this.networkStatus = events[evt]
+        this.networkStatus = events[evt as NetworkEvent] as string
         m.redraw()
       })
     )
   },
 
-  onSaveStatusChange(isSaving) {
+  onSaveStatusChange(isSaving: boolean): void {
     clearTimeout(this.saveStatusTimer)
     if (isSaving) {
       this.saveStatusClass = 'show'
       m.redraw()
     } else {
-      this.saveStatusTimer = setTimeout(() => {
+      this.saveStatusTimer = window.setTimeout(() => {
         this.saveStatusClass = ''
         m.redraw()
       }, 300)
@@ -42,6 +60,7 @@ const App = {
   },
 
   view() {
+    const href = location.origin + '/' + this.id
     return m(
       'main',
       m('header', [
@@ -53,8 +72,8 @@ const App = {
           m('.layer', [
             m('.layer', [
               m(Editor, {
-                socket,
-                id,
+                socket: socket,
+                id: this.id,
                 onStatusChange: this.onSaveStatusChange.bind(this),
               }),
             ]),

@@ -1,6 +1,6 @@
 html,
 body {
-  background: url('./../image/bg.png') left top repeat;
+  background: url('../image/bg.png') left top repeat;
   background-color: rgb(237, 238, 240);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'PingFangSC',
     'Roboto', 'Hiragino Sans GB', 'Helvetica Neue', 'Arial', 'STHeiti',

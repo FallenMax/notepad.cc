@@ -1,60 +1,86 @@
-const { createPatch, applyPatch, merge3 } = require('../../server/lib/diff3')
-const hashString = require('string-hash')
-const Stream = require('../util/stream.js')
-const m = require('mithril')
+import m from 'mithril'
+import { Component } from 'mithril/index'
+import hashString from 'string-hash'
+import { PatchCompressed, applyPatch, createPatch, merge3 } from '../util/diff3'
+import { Stream } from '../util/stream'
 
-module.exports = {
-  oncreate({ dom, attrs: { id, socket, onStatusChange } }) {
-    const $editor = dom
+interface NoteError {
+  errcode: string
+}
 
-    //------ streams --------
+export interface EditorProps {
+  id: string
+  socket: SocketIOClient.Socket
+  onStatusChange: (...arg: any[]) => void
+}
 
-    // remote
+const UNIQUE_CARET = '\u0000'
+
+const verify = (str: string, hash: number): boolean => {
+  return str != null && hashString(str) === hash
+}
+
+export const Editor: Component<EditorProps> = {
+  oncreate({ dom, attrs: { id, socket, onStatusChange } }): void {
+    const $editor = dom as HTMLTextAreaElement
+
+    //------ events --------
+
     const remoteNote$ = remoteNoteStream()
+
     const isRemoteNoteStale$ = remoteNote$.map(() => false)
 
-    // local
-    const compositing$ = compositingStream().unique()
-    const notCompositing$ = compositing$.map(comp => !comp)
+    const isNotCompositing$ = compositingStream($editor)
+      .unique()
+      .map(comp => !comp)
+
     const input$ = Stream.fromEvent($editor, 'input')
     const keydown$ = Stream.fromEvent($editor, 'keydown')
     const commonParent$ = Stream($editor.value) // the 'o' in threeWayMerge(a,o,b)
 
-    // remote => local
-    const updateLocal$ = remoteNote$.until(notCompositing$)
-
-    // local => remote
-    const savePending$ = input$.debounce(500)
+    const shouldSave$ = input$.debounce(500).map(() => null)
     const isSaving$ = Stream(false)
 
-    const editorDirty$ = editorDirtyStream(input$, isSaving$)
+    const isEditorDirty$ = editorDirtyStream()
 
-    //------ effects --------
-    keydown$.subscribe(mutateInput)
+    //------ listeners --------
+    keydown$.subscribe(mutateContentOnKeydown)
 
-    updateLocal$.subscribe(mergeToEditor, false)
+    remoteNote$.until(isNotCompositing$).subscribe(mergeToEditor, false)
 
     isRemoteNoteStale$
       .unique()
       .filter(Boolean)
       .subscribe(fetchNote)
 
-    savePending$
-      .until(notCompositing$)
+    shouldSave$
+      .until(isNotCompositing$)
       .map(() => $editor.value)
       .subscribe(saveToRemote, false)
 
     isSaving$.unique().subscribe(onStatusChange)
 
-    editorDirty$.subscribe(setBeforeunloadPrompt)
+    isEditorDirty$.subscribe(setBeforeUnloadPrompt)
 
     //------- trigger fist fetch ---------
     isRemoteNoteStale$(true)
 
     return
 
-    function mutateInput(e) {
-      if (e.code === 'Tab' && !e.isComposing) {
+    function mutateContentOnKeydown(e: KeyboardEvent) {
+      // @ts-ignore
+      if (e.isComposing) return
+
+      const keyEvent = e
+      const content = $editor.value
+      const cursorPos = $editor.selectionStart
+      const lines = content.split('\n')
+      const linesUntilCursor = content.slice(0, cursorPos).split('\n')
+      const lineIndex = linesUntilCursor.length - 1
+      const activeLine = lines[lineIndex]
+      const lineCursorPos = linesUntilCursor[linesUntilCursor.length - 1].length
+
+      if (e.code === 'Tab') {
         const content = $editor.value
         const selectionStart = $editor.selectionStart
         const newContent =
@@ -68,34 +94,37 @@ module.exports = {
       }
     }
 
-    function remoteNoteStream() {
+    function remoteNoteStream(): Stream<string> {
       const remoteNote$ = Stream($editor.value)
 
-      socket.on('updated note', ({ h: hash, p: patch }) => {
-        const newNote = applyPatch(remoteNote$(), patch)
-        if (verify(newNote, hash)) {
-          remoteNote$(newNote)
-        } else {
-          isRemoteNoteStale$(true)
+      socket.on(
+        'note_update',
+        ({ h: hash, p: patch }: { h: number; p: PatchCompressed }) => {
+          const newNote = applyPatch(remoteNote$(), patch)
+          if (verify(newNote, hash)) {
+            remoteNote$(newNote)
+          } else {
+            isRemoteNoteStale$(true)
+          }
         }
-      })
+      )
 
       socket.emit('subscribe', { id: id })
       return remoteNote$
     }
 
-    function fetchNote() {
-      socket.emit('get', { id: id }, ({ note } = {}) => {
+    function fetchNote(): void {
+      socket.emit('get', { id: id }, ({ note }: { note?: string } = {}) => {
         if (note != null && isRemoteNoteStale$()) {
           remoteNote$(note)
-          if (dom.disabled) {
-            dom.disabled = false
+          if ($editor.disabled) {
+            $editor.disabled = false
           }
         }
       })
     }
 
-    function mergeToEditor() {
+    function mergeToEditor(): void {
       const newRemoteNote = remoteNote$()
 
       if (newRemoteNote === $editor.value) {
@@ -115,34 +144,32 @@ module.exports = {
           console.info('merged with remote version :)')
           loadToEditor(merged)
           commonParent$(newRemoteNote)
-          savePending$(true)
+          shouldSave$(null)
         }
       }
     }
 
-    function loadToEditor(note) {
+    function loadToEditor(note: string) {
       if (note !== $editor.value) {
-        const nextCaretPos = getNextCaretPos($editor.value, note, $editor)
+        const nextCaretPos = getNextCaretPos($editor.value, note)
         $editor.value = note
         $editor.setSelectionRange(nextCaretPos, nextCaretPos)
       }
 
-      function getNextCaretPos(prev, next, $editor) {
-        const caretSymbol = genUniqCaret(next, prev)
+      function getNextCaretPos(prev: string, next: string) {
         const prevCaretPos = $editor.selectionStart
         const prevWithCaret =
-          '' +
           prev.substring(0, prevCaretPos) +
-          caretSymbol +
+          UNIQUE_CARET +
           prev.substring(prevCaretPos, prev.length)
         const nextWithCaret = merge3(next, prev, prevWithCaret)
         return nextWithCaret != null
-          ? nextWithCaret.indexOf(caretSymbol)
+          ? nextWithCaret.indexOf(UNIQUE_CARET)
           : next.length
       }
     }
 
-    function saveToRemote(note) {
+    function saveToRemote(note: string) {
       const remoteNote = remoteNote$()
       if (!isSaving$() && note !== remoteNote) {
         isSaving$(true)
@@ -151,7 +178,8 @@ module.exports = {
           p: createPatch(remoteNote, note),
           h: hashString(note),
         }
-        socket.emit('save', msg, ({ error } = {}) => {
+
+        socket.emit('save', msg, ({ error }: { error?: NoteError } = {}) => {
           isSaving$(false)
           if (!error) {
             commonParent$(note)
@@ -169,32 +197,33 @@ module.exports = {
       }
     }
 
-    function compositingStream() {
-      const compositing$ = Stream(false)
-      $editor.addEventListener('compositionstart', e => {
-        compositing$(true)
-      })
-      $editor.addEventListener('compositionend', e => {
-        compositing$(false)
-      })
-      return compositing$
+    function compositingStream(elem: HTMLElement): Stream<boolean> {
+      const compositionStart$ = Stream.fromEvent(elem, 'compositionstart')
+      const compositionEnd$ = Stream.fromEvent(elem, 'compositionstart')
+      const compositing$ = Stream.merge([
+        compositionStart$.map(() => true),
+        compositionEnd$.map(() => false),
+      ])
+        .startWith(false)
+        .unique()
+      return compositing$.log('comp')
     }
 
-    function editorDirtyStream(input$, $isSaving) {
+    function editorDirtyStream() {
       const $dirty = Stream(false)
       input$.subscribe(() => $dirty(true))
-      $isSaving.filter(s => !s).subscribe(() => $dirty(false))
+      isSaving$.filter(s => !s).subscribe(() => $dirty(false))
       return $dirty
     }
 
-    function beforeunloadPrompt(e) {
+    function beforeunloadPrompt(e: BeforeUnloadEvent) {
       var confirmationMessage = 'Your change has not been saved, quit?'
 
       e.returnValue = confirmationMessage // Gecko, Trident, Chrome 34+
       return confirmationMessage // Gecko, WebKit, Chrome <34
     }
 
-    function setBeforeunloadPrompt(isDirty) {
+    function setBeforeUnloadPrompt(isDirty: boolean) {
       if (isDirty) {
         window.addEventListener('beforeunload', beforeunloadPrompt)
       } else {
@@ -213,15 +242,4 @@ module.exports = {
       '(Loading...)'
     )
   },
-}
-
-// --------- helpers -----------
-
-function genUniqCaret(...strs) {
-  let caretList = ['☠', '☮', '☯', '♠', '\u0000'] // i don't think any one will use last one
-  return caretList.find(v => strs.every(str => !str.includes(v)))
-}
-
-function verify(str, hash) {
-  return str != null && hashString(str) === hash
 }
