@@ -199,14 +199,14 @@ export const Editor: Component<EditorProps> = {
 
     function compositingStream(elem: HTMLElement): Stream<boolean> {
       const compositionStart$ = Stream.fromEvent(elem, 'compositionstart')
-      const compositionEnd$ = Stream.fromEvent(elem, 'compositionstart')
+      const compositionEnd$ = Stream.fromEvent(elem, 'compositionend')
       const compositing$ = Stream.merge([
         compositionStart$.map(() => true),
         compositionEnd$.map(() => false),
       ])
         .startWith(false)
         .unique()
-      return compositing$.log('comp')
+      return compositing$
     }
 
     function editorDirtyStream() {
