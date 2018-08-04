@@ -53,7 +53,8 @@
     "watch:server": "tsc --project ./src/server/tsconfig.json --watch & nodemon server/index.js --delay 500ms",
     "watch:client": "parcel watch src/client/index.html --out-dir public --public-url './' --target browser",
     "predeploy": "npm run build",
-    "deploy": "./scripts/deploy.sh"
+    "deploy": "./scripts/deploy.sh",
+    "rollback": "./scripts/rollback.sh"
   },
   "author": "FallenMax@gmail.com",
   "license": "ISC",
