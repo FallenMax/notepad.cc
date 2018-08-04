@@ -1,15 +1,33 @@
 set -e
 
 echo 'start deploy'
-ssh root@128.199.240.2 -p9999 << EOF
+
+rm -rf bundle.zip
+zip -q -r bundle.zip public server package.json yarn.lock
+
+ssh root@139.59.222.188 -p9999 << EOF
   set -e
-  rm -rf /root/code/github/notepad.cc_bak
-  cp -r /root/code/github/notepad.cc{,_bak}
+
+  echo 'deploy started...'
   cd /root/code/github/notepad.cc
-  git pull
+
+  echo 'backup stuff...'
+  mv -f public{,_bak}
+  mv -f server{,_bak}
+  mv -f package.json{,_bak}
+  mv -f yarn.lock{,_bak}
+
+  echo 'unpack bundle...'
+  unzip bundle.zip
+  rm -rf bundle.zip
+
+  echo 'install dependencies...'
   yarn install
-  yarn run build
+
+  echo 'restart app...'
   pm2 startOrRestart pm2.json
+
+  echo 'deploy done'
 EOF
 echo 'done deploy'
 

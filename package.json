@@ -44,13 +44,16 @@
   },
   "scripts": {
     "start": "node server/index.js",
+    "prebuild": "rm -rf public server",
     "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc --project ./src/server/tsconfig.json",
+    "build:client": "parcel build src/client/index.html --out-dir public --public-url './' --target browser ",
     "prewatch": "npm run build",
     "watch": "npm run watch:server & npm run watch:client",
-    "build:server": "tsc --project ./src/server/tsconfig.json",
     "watch:server": "tsc --project ./src/server/tsconfig.json --watch & nodemon server/index.js --delay 500ms",
-    "build:client": "parcel build src/client/index.html --out-dir public --public-url './' --target browser ",
-    "watch:client": "parcel watch src/client/index.html --out-dir public --public-url './' --target browser "
+    "watch:client": "parcel watch src/client/index.html --out-dir public --public-url './' --target browser",
+    "predeploy": "npm run build",
+    "deploy": "./scripts/deploy.sh"
   },
   "author": "FallenMax@gmail.com",
   "license": "ISC",
