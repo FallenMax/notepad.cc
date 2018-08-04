@@ -1,9 +1,5 @@
 const env = process.env
 
-export interface Config {
-  port: number
-}
-
-export const config: Config = {
+export const config = {
   port: Number(env.PORT || 3000),
 }

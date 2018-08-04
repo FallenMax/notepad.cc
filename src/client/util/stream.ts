@@ -208,7 +208,7 @@ class StreamClass<T> {
     const debounced$ = Stream<T>()
     let timer: any
 
-    this.unique().subscribe(val => {
+    this.subscribe(val => {
       clearTimeout(timer)
       timer = setTimeout(function() {
         debounced$(val)

@@ -1,8 +1,9 @@
-import m from 'mithril'
-import { Component } from 'mithril/index'
+import m, { Component } from 'mithril'
 import hashString from 'string-hash'
-import { PatchCompressed, applyPatch, createPatch, merge3 } from '../util/diff3'
+import { applyPatch, createPatch, merge3, PatchCompressed } from '../util/diff3'
 import { Stream } from '../util/stream'
+import { assist } from './assist'
+import { START, END } from './assistor.types'
 
 interface NoteError {
   errcode: string
@@ -13,8 +14,6 @@ export interface EditorProps {
   socket: SocketIOClient.Socket
   onStatusChange: (...arg: any[]) => void
 }
-
-const UNIQUE_CARET = '\u0000'
 
 const verify = (str: string, hash: number): boolean => {
   return str != null && hashString(str) === hash
@@ -34,17 +33,25 @@ export const Editor: Component<EditorProps> = {
       .unique()
       .map(comp => !comp)
 
-    const input$ = Stream.fromEvent($editor, 'input')
+    const input$ = Stream.fromEvent($editor, 'input').map(() => null)
+
     const keydown$ = Stream.fromEvent($editor, 'keydown')
+
     const commonParent$ = Stream($editor.value) // the 'o' in threeWayMerge(a,o,b)
 
     const shouldSave$ = input$.debounce(500).map(() => null)
+
     const isSaving$ = Stream(false)
 
-    const isEditorDirty$ = editorDirtyStream()
+    const isEditorDirty$ = Stream.merge([
+      input$.map(() => true),
+      isSaving$.filter(s => !s).map(() => false),
+    ]).startWith(false)
 
     //------ listeners --------
-    keydown$.subscribe(mutateContentOnKeydown)
+    keydown$
+      .filter(() => isNotCompositing$())
+      .subscribe(key => assist($editor, key, () => input$(null)))
 
     remoteNote$.until(isNotCompositing$).subscribe(mergeToEditor, false)
 
@@ -55,8 +62,7 @@ export const Editor: Component<EditorProps> = {
 
     shouldSave$
       .until(isNotCompositing$)
-      .map(() => $editor.value)
-      .subscribe(saveToRemote, false)
+      .subscribe(() => saveToRemote($editor.value), false)
 
     isSaving$.unique().subscribe(onStatusChange)
 
@@ -66,33 +72,6 @@ export const Editor: Component<EditorProps> = {
     isRemoteNoteStale$(true)
 
     return
-
-    function mutateContentOnKeydown(e: KeyboardEvent) {
-      // @ts-ignore
-      if (e.isComposing) return
-
-      const keyEvent = e
-      const content = $editor.value
-      const cursorPos = $editor.selectionStart
-      const lines = content.split('\n')
-      const linesUntilCursor = content.slice(0, cursorPos).split('\n')
-      const lineIndex = linesUntilCursor.length - 1
-      const activeLine = lines[lineIndex]
-      const lineCursorPos = linesUntilCursor[linesUntilCursor.length - 1].length
-
-      if (e.code === 'Tab') {
-        const content = $editor.value
-        const selectionStart = $editor.selectionStart
-        const newContent =
-          content.slice(0, selectionStart) +
-          '  ' +
-          content.slice(selectionStart)
-        $editor.value = newContent
-        $editor.setSelectionRange(selectionStart + 2, selectionStart + 2)
-        e.preventDefault()
-        input$()
-      }
-    }
 
     function remoteNoteStream(): Stream<string> {
       const remoteNote$ = Stream($editor.value)
@@ -151,21 +130,37 @@ export const Editor: Component<EditorProps> = {
 
     function loadToEditor(note: string) {
       if (note !== $editor.value) {
-        const nextCaretPos = getNextCaretPos($editor.value, note)
-        $editor.value = note
-        $editor.setSelectionRange(nextCaretPos, nextCaretPos)
+        const nextWithSelectionMark = getNextWithSelectionMark(
+          $editor.value,
+          note
+        )
+        const [
+          before,
+          _start,
+          between,
+          _end,
+          after,
+        ] = nextWithSelectionMark.split(new RegExp(`(${START}|${END})`, 'mg'))
+        $editor.value = [before, between, after].join('')
+        $editor.setSelectionRange(before.length, before.length + between.length)
       }
 
-      function getNextCaretPos(prev: string, next: string) {
-        const prevCaretPos = $editor.selectionStart
-        const prevWithCaret =
-          prev.substring(0, prevCaretPos) +
-          UNIQUE_CARET +
-          prev.substring(prevCaretPos, prev.length)
-        const nextWithCaret = merge3(next, prev, prevWithCaret)
-        return nextWithCaret != null
-          ? nextWithCaret.indexOf(UNIQUE_CARET)
-          : next.length
+      function getNextWithSelectionMark(prev: string, next: string): string {
+        const selectionStart = $editor.selectionStart
+        const selectionEnd = $editor.selectionEnd
+        const prevWithSelectionMark =
+          prev.substring(0, selectionStart) +
+          START +
+          prev.substring(selectionStart, selectionEnd) +
+          END +
+          prev.substring(selectionEnd)
+
+        const nextWithSelectionMark = merge3(next, prev, prevWithSelectionMark)
+        if (nextWithSelectionMark == null) {
+          return next + START + END
+        } else {
+          return nextWithSelectionMark
+        }
       }
     }
 
@@ -207,13 +202,6 @@ export const Editor: Component<EditorProps> = {
         .startWith(false)
         .unique()
       return compositing$
-    }
-
-    function editorDirtyStream() {
-      const $dirty = Stream(false)
-      input$.subscribe(() => $dirty(true))
-      isSaving$.filter(s => !s).subscribe(() => $dirty(false))
-      return $dirty
     }
 
     function beforeunloadPrompt(e: BeforeUnloadEvent) {
