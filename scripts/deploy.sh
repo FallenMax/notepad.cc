@@ -13,6 +13,7 @@ ssh root@139.59.222.188 -p9999 << EOF
   cd /root/code/github/notepad.cc
 
   echo 'backup stuff...'
+  rm -rf backup
   mkdir -p backup
   mv -f public server package.json yarn.lock pm2.json backup/
 
