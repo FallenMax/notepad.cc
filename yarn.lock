@@ -91,24 +91,17 @@
   dependencies:
     "@types/koa" "*"
 
-"@types/koa-router@^7.0.30":
-  version "7.0.30"
-  resolved "http://registry.npm.taobao.org/@types/koa-router/download/@types/koa-router-7.0.30.tgz#636f399bff7c43f83c016b971b028c3f6316ea26"
+"@types/koa-router@^7.0.31":
+  version "7.0.31"
+  resolved "https://registry.yarnpkg.com/@types/koa-router/-/koa-router-7.0.31.tgz#afe279634cca7b4536be38cf641f35f58a4bc5ee"
   dependencies:
     "@types/koa" "*"
 
-"@types/koa-send@*", "@types/koa-send@^4.1.1":
+"@types/koa-send@^4.1.1":
   version "4.1.1"
   resolved "http://registry.npm.taobao.org/@types/koa-send/download/@types/koa-send-4.1.1.tgz#88f57cbe0343c8204903f9096d8ff6b98ec3296f"
   dependencies:
     "@types/koa" "*"
-
-"@types/koa-static@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@types/koa-static/-/koa-static-4.0.0.tgz#4cddce6adf45221bacfb2842b3621dc92f4d642c"
-  dependencies:
-    "@types/koa" "*"
-    "@types/koa-send" "*"
 
 "@types/koa-views@^2.0.3":
   version "2.0.3"
@@ -148,9 +141,9 @@
   version "10.3.0"
   resolved "http://registry.npm.taobao.org/@types/node/download/@types/node-10.3.0.tgz#078516315a84d56216b5d4fed8f75d59d3b16cac"
 
-"@types/node@^10.5.2":
-  version "10.5.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.5.2.tgz#f19f05314d5421fe37e74153254201a7bf00a707"
+"@types/node@^10.5.6":
+  version "10.5.6"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.5.6.tgz#1640f021dd0eaf12e731e54198c12ad2e020dc8e"
 
 "@types/randomstring@^1.1.6":
   version "1.1.6"
@@ -3038,13 +3031,6 @@ koa-send@^5.0.0:
     mz "^2.7.0"
     resolve-path "^1.4.0"
 
-koa-static@^5.0.0:
-  version "5.0.0"
-  resolved "http://registry.npm.taobao.org/koa-static/download/koa-static-5.0.0.tgz#5e92fc96b537ad5219f425319c95b64772776943"
-  dependencies:
-    debug "^3.1.0"
-    koa-send "^5.0.0"
-
 koa-views@^6.1.4:
   version "6.1.4"
   resolved "http://registry.npm.taobao.org/koa-views/download/koa-views-6.1.4.tgz#595eb683ca17d8dfaa1d100b42ba4e34c762154d"
@@ -3484,9 +3470,9 @@ node-releases@^1.0.0-alpha.10:
   dependencies:
     semver "^5.3.0"
 
-nodemon@^1.18.2:
-  version "1.18.2"
-  resolved "https://registry.yarnpkg.com/nodemon/-/nodemon-1.18.2.tgz#36b89c790da70c4f270e2cc0718723131bc04abb"
+nodemon@^1.18.3:
+  version "1.18.3"
+  resolved "https://registry.yarnpkg.com/nodemon/-/nodemon-1.18.3.tgz#46e681ee0dd1b590562e03019b4c5df234f906f9"
   dependencies:
     chokidar "^2.0.2"
     debug "^3.1.0"
@@ -3723,9 +3709,9 @@ pako@~1.0.5:
   version "1.0.6"
   resolved "http://registry.npm.taobao.org/pako/download/pako-1.0.6.tgz#0101211baa70c4bca4a0f63f2206e97b7dfaf258"
 
-parcel-bundler@^1.9.6:
-  version "1.9.6"
-  resolved "https://registry.yarnpkg.com/parcel-bundler/-/parcel-bundler-1.9.6.tgz#de950a6a133d7d5edc21b69a84498ef3b8eeb69f"
+parcel-bundler@^1.9.7:
+  version "1.9.7"
+  resolved "https://registry.yarnpkg.com/parcel-bundler/-/parcel-bundler-1.9.7.tgz#5cd00850dea0254d377005d55ab4bf60429ba2bc"
   dependencies:
     ansi-to-html "^0.6.4"
     babel-code-frame "^6.26.0"
@@ -5352,9 +5338,9 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "http://registry.npm.taobao.org/typedarray/download/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
 
-typescript@^2.9.2:
-  version "2.9.2"
-  resolved "http://registry.npm.taobao.org/typescript/download/typescript-2.9.2.tgz#1cbf61d05d6b96269244eb6a3bce4bd914e0f00c"
+typescript@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.0.1.tgz#43738f29585d3a87575520a4b93ab6026ef11fdb"
 
 uglify-es@^3.3.9:
   version "3.3.9"

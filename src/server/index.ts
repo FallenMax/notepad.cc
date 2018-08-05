@@ -3,7 +3,6 @@ import Koa from 'koa'
 import bodyParser from 'koa-bodyparser'
 import compress from 'koa-compress'
 import logger from 'koa-logger'
-import serveStatic from 'koa-static'
 import { config } from './config'
 import { error } from './middleware/errorHandler'
 import { routes } from './router'
@@ -14,11 +13,6 @@ const app = new Koa()
 app.use(error())
 app.use(logger())
 app.use(compress())
-app.use(
-  serveStatic('public', {
-    index: 'disable',
-  })
-)
 app.use(bodyParser())
 app.use(routes)
 
