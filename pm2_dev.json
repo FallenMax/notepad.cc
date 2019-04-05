@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "name": "notepad_dev",
+      "script": "./server/index.js",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "3001",
+        "DATA_DIR": "/var/lib/notepad_dev/data"
+      }
+    }
+  ]
+}

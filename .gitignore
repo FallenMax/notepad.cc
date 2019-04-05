@@ -6,4 +6,5 @@ node_modules
 .vscode
 /public
 /server
+/common
 /data

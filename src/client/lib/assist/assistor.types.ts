@@ -3,7 +3,7 @@ export type EditorState = string
 export interface Keys {
   key: string
   shift?: boolean
-  ctrl?: boolean // === 'Command' key in MacOS
+  ctrl_cmd?: boolean
   alt?: boolean
 }
 
@@ -13,9 +13,8 @@ export interface Assistor {
   transform: (state: EditorState) => EditorState | undefined
 }
 
-// export const START = '\u0000'
-// export const END = '\u0001'
-export const START = '左'
-export const END = '右'
+// TODO
+export const START = '\u0000'
+export const END = '\u0001'
 export const CURSOR = `${START}${END}`
 export const BULLET = '[\\-+*>]'

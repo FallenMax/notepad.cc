@@ -1,6 +1,7 @@
-import Datastore from 'nedb'
-import path from 'path'
-import { promisifyAll } from './promisify'
+import * as Datastore from 'nedb'
+import * as path from 'path'
+import { promisifyAll } from '../utils/promisify'
+import { config } from '../config'
 
 export interface Id {
   _id: string
@@ -17,19 +18,20 @@ export interface Database<T> {
   update: (query: Partial<T & Id>, item: Partial<T>) => Promise<void>
   upsert: (query: Partial<T & Id>, item: Partial<T>) => Promise<void>
   setIndex(field: keyof T): void
+  quit: () => void
 }
 
 const cache: { [key: string]: Nedb & any } = {}
 
-export function Database<T>(name: string): Database<T> {
+export function createDatabase<T>(name: string): Database<T> {
   cache[name] =
     cache[name] ||
     promisifyAll(
       new Datastore({
-        filename: path.resolve(__dirname, '../../data/', name),
+        filename: path.resolve(config.dataDir, name),
         timestampData: true,
         autoload: true,
-      })
+      }),
     )
 
   const db = cache[name]
@@ -38,12 +40,12 @@ export function Database<T>(name: string): Database<T> {
 
   return {
     name,
-    add: item => db.insertAsync(item),
-    find: query => db.findAsync(query),
-    findOne: query => db.findOneAsync(query),
+    add: (item) => db.insertAsync(item),
+    find: (query) => db.findAsync(query),
+    findOne: (query) => db.findOneAsync(query),
     findAll: () => db.findAsync({}),
-    remove: query => db.removeAsync(query),
-    removeMulti: query => db.removeAsync(query, { multi: true }),
+    remove: (query) => db.removeAsync(query),
+    removeMulti: (query) => db.removeAsync(query, { multi: true }),
     update: (query, item) => db.updateAsync(query, item),
     upsert: (query, item) => db.updateAsync(query, item, { upsert: true }),
     setIndex(field) {
@@ -51,6 +53,9 @@ export function Database<T>(name: string): Database<T> {
         filename: field,
         unique: true,
       })
+    },
+    quit: () => {
+      db.persistence.stopAutocompaction()
     },
   }
 }

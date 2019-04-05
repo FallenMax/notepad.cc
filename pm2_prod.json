@@ -4,7 +4,9 @@
       "name": "notepad",
       "script": "./server/index.js",
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "PORT": "3000",
+        "DATA_DIR": "/var/lib/notepad/data"
       }
     }
   ]

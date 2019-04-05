@@ -1,28 +1,55 @@
-import http from 'http'
-import Koa from 'koa'
-import bodyParser from 'koa-bodyparser'
-import compress from 'koa-compress'
-import logger from 'koa-logger'
+import * as http from 'http'
+import * as Koa from 'koa'
+import * as bodyParser from 'koa-bodyparser'
+import * as compress from 'koa-compress'
+import * as logger from 'koa-logger'
 import { config } from './config'
 import { error } from './middleware/errorHandler'
 import { routes } from './router'
-import { wsServer } from './websocket'
+import { createWebsocketServer } from './websocket'
+import { isTesting } from './utils/env'
+import { noteService } from './service/note'
 
-const app = new Koa()
+let httpServer: http.Server | undefined
+let websocketServer: SocketIO.Server | undefined
 
-app.use(error())
-app.use(logger())
-app.use(compress())
-app.use(bodyParser())
-app.use(routes)
+export const start = () => {
+  return new Promise((resolve) => {
+    console.info('--- start ---')
+    if (httpServer || websocketServer) {
+      throw new Error('server is already running')
+    }
+    const app = new Koa()
 
-const httpServer = new http.Server(app.callback())
-wsServer.listen(httpServer)
+    app.use(error())
+    app.use(logger())
+    app.use(compress())
+    app.use(bodyParser())
+    app.use(routes)
 
-function start() {
-  const port = config.port || 3000
-  httpServer.listen(port)
-  console.info('Listening on', port)
+    httpServer = new http.Server(app.callback())
+    websocketServer = createWebsocketServer()
+    websocketServer.listen(httpServer)
+
+    const port = config.port
+    httpServer.listen(port, resolve)
+    console.info('Listening on', port)
+  })
 }
 
-start()
+export const quit = () => {
+  console.info('--- quit ---')
+  if (httpServer) {
+    httpServer.close()
+    httpServer = undefined
+  }
+  if (websocketServer) {
+    websocketServer.close()
+    websocketServer = undefined
+  }
+  noteService.destory()
+}
+
+if (!isTesting) {
+  start()
+}

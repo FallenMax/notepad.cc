@@ -2,8 +2,6 @@ set -e
 
 echo 'start deploy'
 
-rm -rf bundle.zip
-zip -q -r bundle.zip public server package.json yarn.lock pm2.json
 scp -P 9999 bundle.zip root@139.59.222.188:/root/code/github/notepad.cc
 
 ssh root@139.59.222.188 -p9999 << EOF

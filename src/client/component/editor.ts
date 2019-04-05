@@ -1,233 +1,343 @@
-import m, { Component } from 'mithril'
 import hashString from 'string-hash'
-import { applyPatch, createPatch, merge3, PatchCompressed } from '../util/diff3'
-import { Stream } from '../util/stream'
-import { assist } from './assist'
-import { START, END } from './assistor.types'
+import m, { FactoryComponent } from 'mithril'
+import { merge3, createPatch, applyPatch, Patch } from '../lib/diff3'
+import { UserError } from '../util/error'
+import { isDebugging } from '../util/env'
+import { createNoteService } from '../service/note.service'
+import { START, END } from '../lib/assist/assistor.types'
+import { assist } from '../lib/assist/assist'
+import { assertNever } from '../util/assert'
 
-interface NoteError {
-  errcode: string
+const noop = (_error?: any) => {}
+
+const showError = (e: any) => {
+  console.error(e)
+  window.alert(
+    (e && e.errmsg) || 'Unknown error occured, please refresh to retry.',
+  )
+}
+
+// attempt to set textarea value while perserving selected range
+const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
+  if (value === textarea.value) {
+    return
+  }
+
+  const prev = textarea.value
+  const next = value
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+
+  const prevWithSelectionMark =
+    prev.substring(0, start) +
+    START +
+    prev.substring(start, end) +
+    END +
+    prev.substring(end)
+  const nextWithSelectingMark =
+    merge3(next, prev, prevWithSelectionMark) || next + START + END
+  const [before, , between, , after] = nextWithSelectingMark.split(
+    new RegExp(`(${START}|${END})`, 'mg'),
+  )
+  textarea.value = [before, between, after].join('')
+  textarea.setSelectionRange(before.length, before.length + between.length)
 }
 
 export interface EditorProps {
   id: string
   socket: SocketIOClient.Socket
-  onStatusChange: (...arg: any[]) => void
+  onSaveStatusChange: (isSaving: boolean) => void
 }
 
-const verify = (str: string, hash: number): boolean => {
-  return str != null && hashString(str) === hash
-}
+export const Editor: FactoryComponent<EditorProps> = () => {
+  let teardown = () => {}
 
-export const Editor: Component<EditorProps> = {
-  oncreate({ dom, attrs: { id, socket, onStatusChange } }): void {
-    const $editor = dom as HTMLTextAreaElement
+  return {
+    oncreate(vnode): void {
+      const id = vnode.attrs.id
+      const socket = vnode.attrs.socket
 
-    //------ events --------
-
-    const remoteNote$ = remoteNoteStream()
-
-    const isRemoteNoteStale$ = remoteNote$.map(() => false)
-
-    const isNotCompositing$ = compositingStream($editor)
-      .unique()
-      .map(comp => !comp)
-
-    const input$ = Stream.fromEvent($editor, 'input').map(() => null)
-
-    const keydown$ = Stream.fromEvent($editor, 'keydown')
-
-    const commonParent$ = Stream($editor.value) // the 'o' in threeWayMerge(a,o,b)
-
-    const shouldSave$ = input$.debounce(500).map(() => null)
-
-    const isSaving$ = Stream(false)
-
-    const isEditorDirty$ = Stream.merge([
-      input$.map(() => true),
-      isSaving$.filter(s => !s).map(() => false),
-    ]).startWith(false)
-
-    //------ listeners --------
-    keydown$
-      .filter(() => isNotCompositing$())
-      .subscribe(key => assist($editor, key, () => input$(null)))
-
-    remoteNote$.until(isNotCompositing$).subscribe(mergeToEditor, false)
-
-    isRemoteNoteStale$
-      .unique()
-      .filter(Boolean)
-      .subscribe(fetchNote)
-
-    shouldSave$
-      .until(isNotCompositing$)
-      .subscribe(() => saveToRemote($editor.value), false)
-
-    isSaving$.unique().subscribe(onStatusChange)
-
-    isEditorDirty$.subscribe(setBeforeUnloadPrompt)
-
-    //------- trigger fist fetch ---------
-    isRemoteNoteStale$(true)
-
-    return
-
-    function remoteNoteStream(): Stream<string> {
-      const remoteNote$ = Stream($editor.value)
-
-      socket.on(
-        'note_update',
-        ({ h: hash, p: patch }: { h: number; p: PatchCompressed }) => {
-          const newNote = applyPatch(remoteNote$(), patch)
-          if (verify(newNote, hash)) {
-            remoteNote$(newNote)
-          } else {
-            isRemoteNoteStale$(true)
-          }
-        }
-      )
-
-      socket.emit('subscribe', { id: id })
-      return remoteNote$
-    }
-
-    function fetchNote(): void {
-      socket.emit('get', { id: id }, ({ note }: { note?: string } = {}) => {
-        if (note != null && isRemoteNoteStale$()) {
-          remoteNote$(note)
-          if ($editor.disabled) {
-            $editor.disabled = false
-          }
-        }
+      //-------------- note service --------------
+      const { subscribe, fetchNote, saveNote } = createNoteService({
+        socket,
+        id,
       })
-    }
 
-    function mergeToEditor(): void {
-      const newRemoteNote = remoteNote$()
+      //-------------- state --------------
+      // note versions
+      const editor = vnode.dom as HTMLTextAreaElement
+      let common = ''
+      let remote = ''
 
-      if (newRemoteNote === $editor.value) {
-        commonParent$(newRemoteNote)
-      } else if (commonParent$() === $editor.value) {
-        loadToEditor(newRemoteNote)
-        commonParent$(newRemoteNote)
-      } else {
-        const merged = merge3(newRemoteNote, commonParent$(), $editor.value)
-        if (merged == null) {
-          console.warn(
-            'failed to merge with remote version, discarding local version :('
-          )
-          loadToEditor(newRemoteNote)
-          commonParent$(newRemoteNote)
-        } else {
-          console.info('merged with remote version :)')
-          loadToEditor(merged)
-          commonParent$(newRemoteNote)
-          shouldSave$(null)
+      // branch status
+      let remoteUpdated = false
+      let localUpdated = false
+      let remoteStale = false
+
+      // operation status
+      let operation = 'idle' as 'idle' | 'push' | 'pull'
+
+      // special conditions
+      let isCompositing = false
+
+      const getState = () => {
+        return {
+          remoteUpdated,
+          localUpdated,
+          remoteStale,
+          operation,
+          isCompositing,
         }
       }
-    }
-
-    function loadToEditor(note: string) {
-      if (note !== $editor.value) {
-        const nextWithSelectionMark = getNextWithSelectionMark(
-          $editor.value,
-          note
-        )
-        const [
-          before,
-          _start,
-          between,
-          _end,
-          after,
-        ] = nextWithSelectionMark.split(new RegExp(`(${START}|${END})`, 'mg'))
-        $editor.value = [before, between, after].join('')
-        $editor.setSelectionRange(before.length, before.length + between.length)
+      if (isDebugging) {
+        // @ts-ignore
+        window.s = getState
       }
 
-      function getNextWithSelectionMark(prev: string, next: string): string {
-        const selectionStart = $editor.selectionStart
-        const selectionEnd = $editor.selectionEnd
-        const prevWithSelectionMark =
-          prev.substring(0, selectionStart) +
-          START +
-          prev.substring(selectionStart, selectionEnd) +
-          END +
-          prev.substring(selectionEnd)
+      //-------------- note operations --------------
+      const pushLocal = (callback = noop) => {
+        if (isDebugging) {
+          console.info('operation:pushLocal')
+        }
+        try {
+          const current = editor.value
+          const patch = createPatch(remote, current)
+          const hash = hashString(current)
 
-        const nextWithSelectionMark = merge3(next, prev, prevWithSelectionMark)
-        if (nextWithSelectionMark == null) {
-          return next + START + END
-        } else {
-          return nextWithSelectionMark
+          saveNote(patch, hash)
+            .then(({ errcode }) => {
+              if (errcode) {
+                switch (errcode) {
+                  case 'HASH_MISMATCH':
+                    remoteStale = true
+                    break
+                  case 'EXCEEDED_MAX_SIZE':
+                    throw new UserError(
+                      `Note's size exceeded limit (100,000 characters).`,
+                    )
+                  default:
+                    return assertNever(errcode)
+                }
+              } else {
+                remote = current
+                common = current
+                remoteUpdated = false
+                remoteStale = false
+                localUpdated = current !== editor.value
+              }
+              callback()
+            })
+            .catch(callback)
+        } catch (error) {
+          callback(error)
         }
       }
-    }
 
-    function saveToRemote(note: string) {
-      const remoteNote = remoteNote$()
-      if (!isSaving$() && note !== remoteNote) {
-        isSaving$(true)
-        const msg = {
-          id: id,
-          p: createPatch(remoteNote, note),
-          h: hashString(note),
+      const pullRemote = (callback = noop) => {
+        if (isDebugging) {
+          console.info('operation:pullRemote')
         }
+        fetchNote()
+          .then(({ note }) => {
+            remote = note
+            remoteStale = false
+            remoteUpdated = false
+          })
+          .then(callback)
+          .catch(callback)
+      }
 
-        socket.emit('save', msg, ({ error }: { error?: NoteError } = {}) => {
-          isSaving$(false)
-          if (!error) {
-            commonParent$(note)
-            remoteNote$(note)
-          } else {
-            if (error.errcode === 'HASH_MISMATCH') {
-              isRemoteNoteStale$(true)
-            } else if (error.errcode === 'EXCEEDED_MAX_SIZE') {
-              window.alert(
-                'Note exceeded max size (100,000 characters), please do not abuse this free service.'
-              )
-            }
+      const rebaseLocal = (callback = noop) => {
+        if (isDebugging) {
+          console.info('operation:rebaseLocal')
+        }
+        let rebasedLocal = merge3(remote, common, editor.value)
+        if (rebasedLocal == null) {
+          console.warn('failed to merge, discarding local note :(')
+          rebasedLocal = remote
+        }
+        setTextareaValue(editor, rebasedLocal)
+        common = remote
+        remoteUpdated = false
+        localUpdated = true
+
+        callback()
+      }
+
+      const forwardLocal = (callback = noop) => {
+        if (isDebugging) {
+          console.info('operation:forwardLocal')
+        }
+        setTextareaValue(editor, remote)
+        common = remote
+        remoteUpdated = false
+        callback()
+      }
+
+      /** pattern match current state and exec corresponding sync operation */
+      const requestSync = () => {
+        if (isDebugging) {
+          console.info('[sync] start', getState())
+        }
+        if (remoteStale) {
+          if (operation !== 'idle') {
+            deferSync()
+            return
           }
-        })
+          operation = 'pull'
+          vnode.attrs.onSaveStatusChange(true)
+          pullRemote(() => {
+            operation = 'idle'
+            vnode.attrs.onSaveStatusChange(false)
+            requestSync()
+          })
+          return
+        }
+
+        if (localUpdated && remoteUpdated) {
+          if (isCompositing) {
+            deferSync()
+            return
+          }
+          rebaseLocal(requestSync)
+          return
+        }
+
+        if (localUpdated) {
+          if (operation !== 'idle' || isCompositing) {
+            deferSync()
+            return
+          }
+          operation = 'push'
+          vnode.attrs.onSaveStatusChange(true)
+          pushLocal(() => {
+            operation = 'idle'
+            vnode.attrs.onSaveStatusChange(false)
+            requestSync()
+          })
+          return
+        }
+
+        if (remoteUpdated) {
+          if (isCompositing) {
+            deferSync()
+            return
+          }
+          forwardLocal(requestSync)
+          return
+        }
       }
-    }
 
-    function compositingStream(elem: HTMLElement): Stream<boolean> {
-      const compositionStart$ = Stream.fromEvent(elem, 'compositionstart')
-      const compositionEnd$ = Stream.fromEvent(elem, 'compositionend')
-      const compositing$ = Stream.merge([
-        compositionStart$.map(() => true),
-        compositionEnd$.map(() => false),
-      ])
-        .startWith(false)
-        .unique()
-      return compositing$
-    }
-
-    function beforeunloadPrompt(e: BeforeUnloadEvent) {
-      var confirmationMessage = 'Your change has not been saved, quit?'
-
-      e.returnValue = confirmationMessage // Gecko, Trident, Chrome 34+
-      return confirmationMessage // Gecko, WebKit, Chrome <34
-    }
-
-    function setBeforeUnloadPrompt(isDirty: boolean) {
-      if (isDirty) {
-        window.addEventListener('beforeunload', beforeunloadPrompt)
-      } else {
-        window.removeEventListener('beforeunload', beforeunloadPrompt)
+      let syncTimer: number | undefined
+      const deferSync = () => {
+        if (isDebugging) {
+          console.info('deferSync')
+        }
+        clearTimeout(syncTimer)
+        syncTimer = window.setTimeout(requestSync, 100)
       }
-    }
-  },
-  onbeforeupdate() {
-    // update textarea manually
-    return false
-  },
-  view() {
-    return m(
-      'textarea#editor',
-      { disabled: true, spellcheck: 'false' },
-      '(Loading...)'
-    )
-  },
+
+      //-------------- event handlers --------------
+      const onCompositingStart = () => {
+        isCompositing = true
+      }
+      const onCompositingEnd = () => {
+        isCompositing = false
+      }
+      const onInput = () => {
+        localUpdated = true
+        deferSync()
+      }
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (isCompositing) {
+          return
+        }
+        const assisted = assist(editor, e)
+        if (assisted) {
+          onInput()
+        }
+      }
+
+      const onNoteUpdate = ({ h: hash, p: patch }: { h: number; p: Patch }) => {
+        const note = applyPatch(remote, patch)
+        const verified = note != null && hashString(note) === hash
+        if (verified) {
+          remote = note!
+          remoteUpdated = true
+          remoteStale = false
+        } else {
+          remoteStale = true
+        }
+        requestSync()
+      }
+
+      const onBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (localUpdated) {
+          const message = 'Your change has not been saved, quit?'
+          e.returnValue = message // Gecko, Trident, Chrome 34+
+          return message // Gecko, WebKit, Chrome <34
+        }
+      }
+
+      const start = async () => {
+        try {
+          const result = await fetchNote()
+          if (typeof result.note !== 'string') {
+            throw new UserError('Failed to fetwh note')
+          }
+
+          editor.value = result.note
+          common = result.note
+          remote = result.note
+
+          remoteUpdated = false
+          localUpdated = false
+          remoteStale = false
+
+          operation = 'idle'
+          isCompositing = false
+
+          await subscribe()
+
+          editor.addEventListener('compositionstart', onCompositingStart)
+          editor.addEventListener('compositionend', onCompositingEnd)
+          editor.addEventListener('keydown', onKeyDown)
+          editor.addEventListener('input', onInput)
+          socket.on('note_update', onNoteUpdate)
+          window.addEventListener('beforeunload', onBeforeUnload)
+
+          editor.disabled = false
+        } catch (error) {
+          showError(error)
+        }
+      }
+
+      teardown = () => {
+        editor.removeEventListener('compositionstart', onCompositingStart)
+        editor.removeEventListener('compositionend', onCompositingEnd)
+        editor.removeEventListener('keydown', onKeyDown)
+        editor.removeEventListener('input', onInput)
+        socket.off('note_update', onNoteUpdate)
+        window.removeEventListener('beforeunload', onBeforeUnload)
+        // todo
+        // unsubscribe()
+      }
+
+      start()
+    },
+    onbeforeupdate() {
+      // skip mithril update, we will update textarea ourselves
+      return false
+    },
+    onremove() {
+      teardown()
+    },
+    view() {
+      return m(
+        'textarea#editor',
+        { disabled: true, spellcheck: 'false' },
+        '(Loading...)',
+      )
+    },
+  }
 }

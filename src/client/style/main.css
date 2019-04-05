@@ -1,6 +1,6 @@
 html,
 body {
-  background: url('../image/bg.png') left top repeat;
+  background: url('../assets/bg.png') left top repeat;
   background-color: rgb(237, 238, 240);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'PingFangSC',
     'Roboto', 'Hiragino Sans GB', 'Helvetica Neue', 'Arial', 'STHeiti',
@@ -70,11 +70,11 @@ header {
 #save-status {
   color: #84878c;
   opacity: 0;
-  transition: opacity 0.5s;
+  transition: opacity 0.5s 0.5s;
 }
-
-#save-status.show {
+#save-status.is-active {
   opacity: 1;
+  transition: opacity 0s;
 }
 
 #network-status {

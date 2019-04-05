@@ -1,13 +1,24 @@
 import diff3merge from 'diff3'
 import { diffPatch, patch, stripPatch } from 'node-diff3'
 
-export type PatchCompressed = any[]
-export type Patch = any
+type Chunk = { __chunk: any }
+
+export type PatchUncompressed = {
+  file1: {
+    offset: number
+    length: number
+  }
+  file2: {
+    chunk: Chunk
+  }
+}[]
+
+export type Patch = { a: [number, number]; b: Chunk }[]
 
 const merge = (
   a: string[],
   o: string[],
-  b: string[]
+  b: string[],
 ): { conflict: any; result: any } => {
   const results = diff3merge(a, o, b)
   const conflict = results.some((r: any) => r.conflict)
@@ -19,18 +30,18 @@ function toArr(str: string): string[] {
   return str.split('\n')
 }
 
-function fromArr(str: string[]): string {
+function fromArr(str: string[] | undefined): string | undefined {
   return str && str.join('\n')
 }
 
-function compress(patch: Patch): PatchCompressed {
+function compress(patch: PatchUncompressed): Patch {
   return patch.map(({ file1: { offset, length }, file2: { chunk } }: any) => ({
-    a: [offset, length],
+    a: [offset, length] as [number, number],
     b: chunk,
   }))
 }
 
-function decompress(patch: PatchCompressed): Patch {
+function decompress(patch: Patch): PatchUncompressed {
   return patch.map(({ a, b }: any) => ({
     file1: {
       offset: a[0],
@@ -42,12 +53,12 @@ function decompress(patch: PatchCompressed): Patch {
   }))
 }
 
-export const applyPatch = (a: string, p: PatchCompressed): string =>
+export const applyPatch = (a: string, p: Patch): string | undefined =>
   fromArr(patch(toArr(a), decompress(p)))
 
-export const merge3 = (a: string, o: string, b: string): null | string => {
+export const merge3 = (a: string, o: string, b: string): string | undefined => {
   let { conflict, result } = merge(toArr(a), toArr(o), toArr(b))
-  return conflict ? null : fromArr(result)
+  return conflict ? undefined : fromArr(result)
 }
-export const createPatch = (a: string, b: string): PatchCompressed =>
+export const createPatch = (a: string, b: string): Patch =>
   compress(stripPatch(diffPatch(toArr(a), toArr(b))))

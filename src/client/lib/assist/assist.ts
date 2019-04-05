@@ -1,14 +1,13 @@
 import { assistors } from './assistors'
 import { Keys, EditorState, START, END } from './assistor.types'
-
-const isMac = /Mac/.test(navigator.platform)
+import { isMac } from '../../util/env'
 
 const isSameKey = (a: Keys, b: Keys): boolean => {
   return (
     a.key.toLowerCase() === b.key.toLowerCase() &&
     Boolean(a.shift) === Boolean(b.shift) &&
     Boolean(a.alt) === Boolean(b.alt) &&
-    Boolean(a.ctrl) === Boolean(b.ctrl)
+    Boolean(a.ctrl_cmd) === Boolean(b.ctrl_cmd)
   )
 }
 
@@ -17,11 +16,11 @@ const fromKeyboardEvent = (e: KeyboardEvent): Keys => {
     key: e.key.toLowerCase(),
     shift: Boolean(e.shiftKey),
     alt: Boolean(e.altKey),
-    ctrl: Boolean(isMac ? e.metaKey : e.ctrlKey),
+    ctrl_cmd: Boolean(isMac ? e.metaKey : e.ctrlKey),
   }
 }
 
-export const transform = (
+const applyAssistor = (
   state: EditorState,
   keys: Keys
 ): EditorState | undefined => {
@@ -38,15 +37,13 @@ export const transform = (
   return transformed
 }
 
+/** auto expand, indent, create new list item when input */
 export function assist(
   $textarea: HTMLTextAreaElement,
-  e: KeyboardEvent,
-  onAssisted: (...args: any[]) => void
-) {
+  e: KeyboardEvent
+): boolean {
   // @ts-ignore
   if (e.isComposing) return
-
-  const keyEvent = e
 
   const value = $textarea.value
   const selectionStart = $textarea.selectionStart
@@ -61,21 +58,20 @@ export function assist(
   ].join('')
 
   const keys = fromKeyboardEvent(e)
-  const transformed = transform(state, keys)
+  const transformed = applyAssistor(state, keys)
 
   if (transformed != null) {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation && e.stopImmediatePropagation()
-    if (typeof transformed === 'string') {
-      const [before, _start, between, _end, after] = transformed.split(
-        new RegExp(`(${START}|${END})`, 'mg')
-      )
-      $textarea.value = [before, between, after].join('')
-      $textarea.setSelectionRange(before.length, before.length + between.length)
-      $textarea.blur()
-      $textarea.focus()
-    }
-    onAssisted()
+    const [before, _start, between, _end, after] = transformed.split(
+      new RegExp(`(${START}|${END})`, 'mg')
+    )
+    $textarea.value = [before, between, after].join('')
+    $textarea.setSelectionRange(before.length, before.length + between.length)
+    $textarea.blur()
+    $textarea.focus()
+    return true
   }
+  return false
 }
