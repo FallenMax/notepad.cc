@@ -14,8 +14,7 @@
     "client:build": "parcel build src/client/index.html --out-dir public --public-url '/dist' --target browser ",
     "client:watch": "export NODE_ENV=development && parcel watch src/client/index.html --out-dir public --public-url '/dist' --target browser",
     "bundle": "zip -q -r bundle.zip public server common package.json yarn.lock pm2_dev.json pm2_prod.json",
-    "deploy": "./scripts/deploy2.sh",
-    "rollback": "./scripts/rollback.sh"
+    "deploy": "./scripts/deploy.sh"
   },
   "dependencies": {
     "axios": "^0.18.0",
