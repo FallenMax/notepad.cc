@@ -75,7 +75,6 @@ describe('routes', () => {
         id,
         append: toAppend,
       })
-      console.log('patchResult ', patchResult.data)
 
       const result2 = (await axios.get(`${host}/api/note`, {
         params: { id },

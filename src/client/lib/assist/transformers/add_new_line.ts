@@ -1,5 +1,7 @@
 import { BULLET, CURSOR, Transformer } from '../assistor.types'
 
+const BULLET_LINE_REG = new RegExp(`^( *)(${BULLET})?(.*)${CURSOR}(.*)$`, 'm')
+
 // ===
 //   - xxxIyyy
 // ===
@@ -8,8 +10,7 @@ import { BULLET, CURSOR, Transformer } from '../assistor.types'
 // ===
 
 export const addNewLine: Transformer = (state) => {
-  const reg = new RegExp(`^( *)(${BULLET})?(.*)${CURSOR}(.*)$`, 'gm')
-  const match = reg.exec(state)
+  const match = BULLET_LINE_REG.exec(state)
   if (match) {
     const [matched, leadingSpaces, bullet, beforeCursor, afterCursor] = match
     if (leadingSpaces === '' && bullet === undefined) return undefined

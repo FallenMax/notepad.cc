@@ -10,9 +10,9 @@ import { START, END, Transformer } from '../assistor.types'
 //   yyyyyyy
 //   yyyIxxx
 // ===
+const BLOCK_REG = new RegExp(`^.*${START}(\n|.)*${END}.*$`, 'm')
 export const deindentItems: Transformer = (state) => {
-  const reg = new RegExp(`^.*${START}(\n|.)*${END}.*$`, 'gm')
-  const match = reg.exec(state)
+  const match = BLOCK_REG.exec(state)
   if (match) {
     const [matched] = match
     const deindent = (str: string) => str.replace(/^ /, '').replace(/^ /, '')

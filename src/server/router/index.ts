@@ -74,7 +74,7 @@ const api = (fn: Function): Middleware<{}, any> => async (ctx, next) => {
 
 const router = new Router()
 
-// statics
+// static resources
 router.all('/dist/:file*', serverStatic)
 
 // apis

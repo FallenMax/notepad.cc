@@ -10,11 +10,11 @@ import { START, END, Transformer } from '../assistor.types'
 //     yyyyyyy
 //     yyyIxxx
 // ===
+
+const BLOCK_REG = new RegExp(`^.*${START}(\n|.)*${END}.*$`, 'gm')
+
 export const indentItems: Transformer = (state) => {
-  console.log('indent')
-  const reg = new RegExp(`^.*${START}(\n|.)*${END}.*$`, 'gm')
-  const match = reg.exec(state)
-  console.log('match ', match)
+  const match = BLOCK_REG.exec(state)
   if (match) {
     const [matched] = match
     const indent = (line: string) => '  ' + line

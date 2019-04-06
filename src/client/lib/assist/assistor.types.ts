@@ -19,4 +19,5 @@ export interface Assistor {
 export const START = '\u0000'
 export const END = '\u0001'
 export const CURSOR = `${START}${END}`
-export const BULLET = '[\\-+*>]'
+export const BULLET = '-'
+export const NOT_BULLET = '[^-]'
