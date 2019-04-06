@@ -22,12 +22,18 @@ const fromKeyboardEvent = (e: KeyboardEvent): Keys => {
 
 const applyAssistor = (
   state: EditorState,
-  keys: Keys
+  selection: string,
+  keys: Keys,
 ): EditorState | undefined => {
+  const hasSelection = selection !== ''
   let transformed: EditorState | undefined
   for (let index = 0; index < assistors.length; index++) {
     const assistor = assistors[index]
-    if (isSameKey(keys, assistor.keys)) {
+    if (
+      isSameKey(keys, assistor.keys) &&
+      (assistor.hasSelection === hasSelection ||
+        assistor.hasSelection === undefined)
+    ) {
       transformed = assistor.transform(state)
       if (transformed != null) {
         break
@@ -40,7 +46,7 @@ const applyAssistor = (
 /** auto expand, indent, create new list item when input */
 export function assist(
   $textarea: HTMLTextAreaElement,
-  e: KeyboardEvent
+  e: KeyboardEvent,
 ): boolean {
   // @ts-ignore
   if (e.isComposing) return
@@ -57,15 +63,17 @@ export function assist(
     value.substring(selectionEnd),
   ].join('')
 
+  const selection = value.substring(selectionStart, selectionEnd)
+
   const keys = fromKeyboardEvent(e)
-  const transformed = applyAssistor(state, keys)
+  const transformed = applyAssistor(state, selection, keys)
 
   if (transformed != null) {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation && e.stopImmediatePropagation()
     const [before, _start, between, _end, after] = transformed.split(
-      new RegExp(`(${START}|${END})`, 'mg')
+      new RegExp(`(${START}|${END})`, 'mg'),
     )
     $textarea.value = [before, between, after].join('')
     $textarea.setSelectionRange(before.length, before.length + between.length)

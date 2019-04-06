@@ -7,10 +7,12 @@ export interface Keys {
   alt?: boolean
 }
 
+export type Transformer = (state: EditorState) => EditorState | undefined
+
 export interface Assistor {
-  name: string
   keys: Keys
-  transform: (state: EditorState) => EditorState | undefined
+  hasSelection?: true | false | undefined
+  transform: Transformer
 }
 
 // TODO
