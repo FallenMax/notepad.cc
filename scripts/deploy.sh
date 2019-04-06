@@ -25,9 +25,10 @@ fi
 echo "deploying: $target"
 
 
-npm run build
-npm run test
-npm run bundle
+yarn
+yarn run build
+yarn run test
+yarn run bundle
 
 scp -P $port bundle.zip $user@$host:$download_dir
 

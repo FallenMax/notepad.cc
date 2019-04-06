@@ -10,7 +10,7 @@ const port = Number(
 )
 
 const hostname = env.HOST_NAME || location.hostname
-const host = port === 80 ? hostname : `${hostname}:${port}`
+const host = port ? `${hostname}:${port}` : hostname
 
 export const config = {
   GA_ID: 'UA-84154809-1',
