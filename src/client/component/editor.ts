@@ -2,7 +2,7 @@ import hashString from 'string-hash'
 import m, { FactoryComponent } from 'mithril'
 import { merge3, createPatch, applyPatch, Patch } from '../lib/diff3'
 import { UserError } from '../util/error'
-import { isDebugging } from '../util/env'
+import { isDebugging, isMac } from '../util/env'
 import { createNoteService } from '../service/note.service'
 import { START, END } from '../lib/assist/assistor.types'
 import { assist } from '../lib/assist/assist'
@@ -15,6 +15,41 @@ const showError = (e: any) => {
   window.alert(
     (e && e.errmsg) || 'Unknown error occured, please refresh to retry.',
   )
+}
+
+interface HistoryRecord {
+  time: Date
+  value: string
+  action: 'input' | 'assistedInput' | 'received'
+}
+
+const isUndo = (e: any) => {
+  if (e.inputType === 'historyUndo') {
+    return true
+  }
+  if (
+    e.type === 'keydown' &&
+    e.key === 'z' &&
+    (isMac ? e.metaKey : e.ctrlKey) &&
+    !e.shiftKey
+  ) {
+    return true
+  }
+  return false
+}
+const isRedo = (e: any) => {
+  if (e.inputType === 'historyRedo') {
+    return true
+  }
+  if (
+    e.type === 'keydown' &&
+    e.key === 'z' &&
+    (isMac ? e.metaKey : e.ctrlKey) &&
+    e.shiftKey
+  ) {
+    return true
+  }
+  return false
 }
 
 // attempt to set textarea value while perserving selected range
@@ -80,6 +115,15 @@ export const Editor: FactoryComponent<EditorProps> = () => {
       // special conditions
       let isCompositing = false
 
+      // history state, to support proper undo/redo
+      interface HistoryRecord {
+        time: Date
+        value: string
+        action: 'input' | 'assistedInput' | 'received'
+      }
+      let historyStack: HistoryRecord[] = []
+      let historyPointer = 0
+
       const getState = () => {
         return {
           remoteUpdated,
@@ -94,7 +138,65 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         window.s = getState
       }
 
-      //-------------- note operations --------------
+      //-------------- history (undo/redo) operations --------------
+      // merge adjacent records, remove old ones
+      const compactHistory = () => {
+        const last = historyStack[historyStack.length - 1]
+        const oneBeforeLast = historyStack[historyStack.length - 2]
+        const MINIMAL_INTERVAL = 1000 * 3
+        if (last && oneBeforeLast) {
+          if (
+            last.action === 'input' &&
+            oneBeforeLast.action === 'input' &&
+            last.time.getTime() - oneBeforeLast.time.getTime() <
+              MINIMAL_INTERVAL
+          ) {
+            // drop last
+          }
+        }
+
+        const MAX_HISTORY_SIZE = 200
+        while (historyStack.length > MAX_HISTORY_SIZE) {
+          historyStack.shift()
+          historyPointer--
+        }
+      }
+
+      const addHistoryRecord = (action: HistoryRecord['action']) => {
+        historyStack.push({
+          action,
+          value: editor.value,
+          time: new Date(),
+        })
+        historyPointer++
+        compactHistory()
+      }
+
+      const undo = (e: Event) => {
+        console.info('[editor] undo')
+        e.preventDefault()
+        e.stopPropagation()
+        if (historyPointer > 0) {
+          historyPointer--
+          setTextareaValue(editor, historyStack[historyPointer].value)
+          localUpdated = true
+          deferSync()
+        }
+      }
+
+      const redo = (e: Event) => {
+        console.info('[editor] redo')
+        e.preventDefault()
+        e.stopPropagation()
+        if (historyStack.length - 1 > historyPointer) {
+          historyPointer++
+          setTextareaValue(editor, historyStack[historyPointer].value)
+          localUpdated = true
+          deferSync()
+        }
+      }
+
+      //-------------- version operations --------------
       const pushLocal = (callback = noop) => {
         if (isDebugging) {
           console.info('operation:pushLocal')
@@ -244,11 +346,28 @@ export const Editor: FactoryComponent<EditorProps> = () => {
       const onCompositingEnd = () => {
         isCompositing = false
       }
-      const onInput = () => {
+
+      const onInput = (e?: Event) => {
+        if (e) {
+          if (isUndo(e)) {
+            undo(e)
+            return
+          } else if (isRedo(e)) {
+            redo(e)
+            return
+          }
+        }
         localUpdated = true
         deferSync()
       }
       const onKeyDown = (e: KeyboardEvent) => {
+        if (isUndo(e)) {
+          undo(e)
+          return
+        } else if (isRedo(e)) {
+          redo(e)
+          return
+        }
         if (isCompositing) {
           return
         }
@@ -296,6 +415,15 @@ export const Editor: FactoryComponent<EditorProps> = () => {
 
           operation = 'idle'
           isCompositing = false
+
+          historyStack = [
+            {
+              time: new Date(),
+              value: editor.value,
+              action: 'received',
+            },
+          ]
+          historyPointer = 0
 
           await subscribe()
 
