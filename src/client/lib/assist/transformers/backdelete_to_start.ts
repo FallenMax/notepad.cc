@@ -7,7 +7,7 @@ import { CURSOR, Transformer } from '../assistor.types'
 // ===
 
 export const backDeleteToStart: Transformer = (state) => {
-  const reg = new RegExp(`^( +)${CURSOR}(.*)$`, 'gm')
+  const reg = new RegExp(`^( +)${CURSOR}(.*)$`, 'm')
   const match = reg.exec(state)
   if (match) {
     const [matched, leadingSpaces, afterCursor] = match

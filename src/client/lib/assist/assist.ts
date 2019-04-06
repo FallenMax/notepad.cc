@@ -70,6 +70,7 @@ export function assist(
 
   if (transformed != null) {
     e.preventDefault()
+    e.returnValue = false
     e.stopPropagation()
     e.stopImmediatePropagation && e.stopImmediatePropagation()
     const [before, _start, between, _end, after] = transformed.split(
@@ -77,8 +78,8 @@ export function assist(
     )
     $textarea.value = [before, between, after].join('')
     $textarea.setSelectionRange(before.length, before.length + between.length)
-    $textarea.blur()
-    $textarea.focus()
+    // $textarea.blur()
+    // $textarea.focus()
     return true
   }
   return false

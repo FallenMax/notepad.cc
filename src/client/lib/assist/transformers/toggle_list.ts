@@ -27,20 +27,21 @@ import { START, END, Transformer, BULLET } from '../assistor.types'
 // ===
 const BULLET_REG = new RegExp(`^( *)(${BULLET})( *)`, 'm')
 const BLOCK_REG = new RegExp(`^.*${START}(\n|.)*${END}.*$`, 'm')
+const CURSOR_REG = new RegExp(`(${START}|${END})`, 'mg')
 
 export const toggleList: Transformer = (state) => {
   const match = BLOCK_REG.exec(state)
 
   if (match) {
     const [matched] = match
-    const lines = matched.split('\n')
+    const lines = matched.replace(CURSOR_REG, '').split('\n')
     const everyLineHasBullet = lines.every((line) => BULLET_REG.test(line))
     const prependBullet = (line: string) => {
       const match = BULLET_REG.exec(line)
       if (match) {
         return line
       } else {
-        return line.replace(/^ */gi, (match) => {
+        return line.replace(/^ */gm, (match) => {
           return match + '- '
         })
       }
@@ -61,6 +62,6 @@ export const toggleList: Transformer = (state) => {
     const transformed = lines
       .map(everyLineHasBullet ? stripBullet : prependBullet)
       .join('\n')
-    return state.replace(matched, transformed)
+    return state.replace(matched, START + transformed + END)
   }
 }

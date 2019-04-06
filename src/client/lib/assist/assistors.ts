@@ -4,6 +4,8 @@ import { backDeleteToStart } from './transformers/backdelete_to_start'
 import { indentItems } from './transformers/indent_items'
 import { deindentItems } from './transformers/deindent_items'
 import { toggleList } from './transformers/toggle_list'
+import { indentItem } from './transformers/indent_item'
+import { deindentItem } from './transformers/deindent_item'
 
 export const assistors: Assistor[] = [
   {
@@ -18,10 +20,22 @@ export const assistors: Assistor[] = [
   },
   {
     keys: { key: 'Tab' },
+    hasSelection: false,
+    transform: indentItem,
+  },
+  {
+    keys: { key: 'Tab' },
+    hasSelection: true,
     transform: indentItems,
   },
   {
     keys: { key: 'Tab', shift: true },
+    hasSelection: false,
+    transform: deindentItem,
+  },
+  {
+    keys: { key: 'Tab', shift: true },
+    hasSelection: true,
     transform: deindentItems,
   },
   {
