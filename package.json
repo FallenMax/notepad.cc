@@ -6,12 +6,12 @@
     "start": "export NODE_ENV=development && npm run server:watch & npm run client:watch",
     "clean": "rm -rf public common server bundle.zip",
     "prebuild": "npm run clean",
-    "build": "npm run server:build && npm run client:build",
+    "build": "export NODE_ENV=production && npm run server:build && npm run client:build",
     "test": "export NODE_ENV=test && jest --detectOpenHandles",
     "test:watch": "export NODE_ENV=test && jest --watch --verbose false",
     "server:build": "tsc --project ./src/server/tsconfig.json",
     "server:watch": "ts-node-dev --transpileOnly --no-notify ./src/server/index.ts",
-    "client:build": "parcel build src/client/index.html --out-dir public --public-url '/dist'",
+    "client:build": "parcel build src/client/index.html --out-dir public --public-url '/dist'  --detailed-report 10",
     "client:watch": "parcel src/client/index.html --out-dir public --public-url '/dist' --open",
     "bundle": "zip -q -r bundle.zip public server common package.json yarn.lock pm2_dev.json pm2_prod.json",
     "deploy": "./scripts/deploy.sh"
@@ -30,7 +30,6 @@
     "mustache": "^3.0.1",
     "nedb": "^1.8.0",
     "node-diff3": "^1.0.0",
-    "randomstring": "^1.1.5",
     "socket.io": "^2.2.0",
     "socket.io-client": "^2.2.0",
     "string-hash": "^1.1.3"

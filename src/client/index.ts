@@ -3,18 +3,10 @@ import m from 'mithril'
 import { Editor } from './component/editor'
 import { networkEventMap } from './lib/network'
 import { config } from './config'
-import * as randomstring from 'randomstring'
+import { generateId } from '../common/lib/generate_id'
 
 const id = decodeURIComponent(location.pathname.slice(1))
 if (id === '') {
-  const generateId = () => {
-    return randomstring.generate({
-      length: 8,
-      readable: true,
-      charset: 'alphabetic',
-      capitalization: 'lowercase',
-    })
-  }
   location.replace('/' + generateId())
 }
 

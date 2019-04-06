@@ -1349,10 +1349,6 @@ array-find-index@^1.0.1:
   resolved "http://registry.npm.taobao.org/array-find-index/download/array-find-index-1.0.2.tgz#df010aa1287e164bbda6f9723b0a96a1ec4187a1"
   integrity sha1-3wEKoSh+Fku9pvlyOwqWoexBh6E=
 
-array-uniq@1.0.2:
-  version "1.0.2"
-  resolved "http://registry.npm.taobao.org/array-uniq/download/array-uniq-1.0.2.tgz#5fcc373920775723cfd64d65c64bef53bf9eba6d"
-
 array-unique@^0.3.2:
   version "0.3.2"
   resolved "http://registry.npm.taobao.org/array-unique/download/array-unique-0.3.2.tgz#a894b75d4bc4f6cd679ef3244a9fd8f46ae2d428"
@@ -6787,12 +6783,6 @@ randomfill@^1.0.3:
   dependencies:
     randombytes "^2.0.5"
     safe-buffer "^5.1.0"
-
-randomstring@^1.1.5:
-  version "1.1.5"
-  resolved "http://registry.npm.taobao.org/randomstring/download/randomstring-1.1.5.tgz#6df0628f75cbd5932930d9fe3ab4e956a18518c3"
-  dependencies:
-    array-uniq "1.0.2"
 
 range-parser@~1.2.0:
   version "1.2.0"

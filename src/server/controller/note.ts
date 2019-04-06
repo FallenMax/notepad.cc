@@ -6,10 +6,11 @@ import { NoteApiMapping } from '../../common/api_definitions/note.type'
 import { noteService } from '../service/note'
 import { registerSocketApi, SocketFunction } from './util'
 import { isDeepStrictEqual } from 'util'
+import { generateId } from '../../common/lib/generate_id'
 
 //-------------- Pages --------------
 export const showRandomNote: Middleware = async (ctx, next) => {
-  await ctx.redirect(noteService.generateId())
+  await ctx.redirect(generateId())
 }
 
 export const showNote: Middleware = async (ctx, next) => {
@@ -31,10 +32,10 @@ export const createNote = async ({ note = '' }: { note?: string }) => {
     throw new TypeError(`'note' should be string`)
   }
   // find unused id
-  let id = noteService.generateId()
+  let id = generateId()
   let existed = await noteService.getNote(id)
   while (existed.note !== '') {
-    id = noteService.generateId()
+    id = generateId()
     existed = await noteService.getNote(id)
   }
 

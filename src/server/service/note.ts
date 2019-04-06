@@ -1,4 +1,3 @@
-import * as randomstring from 'randomstring'
 import hashString = require('string-hash')
 import { createDatabase } from '../lib/database'
 import { Patch, applyPatch, createPatch } from '../lib/diff3'
@@ -78,15 +77,6 @@ const createNoteService = () => {
     await patchNote({ id, patch, hash })
   }
 
-  const generateId = () => {
-    return randomstring.generate({
-      length: 8,
-      readable: true,
-      charset: 'alphabetic',
-      capitalization: 'lowercase',
-    })
-  }
-
   const getNote = async (id: string): Promise<Note> => {
     const note = await db.findOne({ _id: id })
     if (note) {
@@ -116,7 +106,6 @@ const createNoteService = () => {
     setNote,
     appendNote,
     patchNote,
-    generateId,
     destory,
     DEBUG_removeAllNote,
   }
