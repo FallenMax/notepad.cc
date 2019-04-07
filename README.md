@@ -12,12 +12,13 @@ https://notepad.1976f.com/
   - Save as you type
 - Extras
   - **Real-time collaboration**, implemented using [Socket.IO] and [diff3] algorithm.
-  - **Provides [API](./server/router/index.test)** for maniputing notes (docs comming soon),
+  - **Provides [API](./src/server/router/index.test.ts)** for maniputing notes (docs comming soon),
     - <small>spoiler: you can even use a note as database to do CRUD</small>
   - **Better list editing UX**
     - <kbd>Tab</kbd>: indent list item(s)
     - <kbd>Shift</kbd> + <kbd>Tab</kbd>: deindent list item(s)
     - <kbd>Enter</kbd>: new list item
+    - <kbd>-</kbd>: turn selected block into list
     - ...More to be discovered
 
 ## Getting Started
