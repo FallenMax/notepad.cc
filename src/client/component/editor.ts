@@ -47,6 +47,8 @@ export interface EditorProps {
   id: string
   socket: SocketIOClient.Socket
   onSaveStatusChange: (isSaving: boolean) => void
+  onFocus: () => void
+  onBlur: () => void
 }
 
 export const Editor: FactoryComponent<EditorProps> = () => {
@@ -303,6 +305,8 @@ export const Editor: FactoryComponent<EditorProps> = () => {
           editor.addEventListener('compositionend', onCompositingEnd)
           editor.addEventListener('keydown', onKeyDown)
           editor.addEventListener('input', onInput)
+          editor.addEventListener('focus', vnode.attrs.onFocus)
+          editor.addEventListener('blur', vnode.attrs.onBlur)
           socket.on('note_update', onNoteUpdate)
           window.addEventListener('beforeunload', onBeforeUnload)
 
@@ -317,6 +321,8 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         editor.removeEventListener('compositionend', onCompositingEnd)
         editor.removeEventListener('keydown', onKeyDown)
         editor.removeEventListener('input', onInput)
+        editor.removeEventListener('focus', vnode.attrs.onFocus)
+        editor.removeEventListener('blur', vnode.attrs.onBlur)
         socket.off('note_update', onNoteUpdate)
         window.removeEventListener('beforeunload', onBeforeUnload)
         // todo
@@ -334,8 +340,8 @@ export const Editor: FactoryComponent<EditorProps> = () => {
     },
     view() {
       return m(
-        'textarea#editor',
-        { disabled: true, spellcheck: 'false' },
+        'textarea.editor',
+        { disabled: true, spellcheck: false },
         '(Loading...)',
       )
     },

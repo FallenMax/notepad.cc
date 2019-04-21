@@ -1,4 +1,3 @@
-
 - [] offline editing
 - [] links
 - [] images
@@ -7,4 +6,3 @@
 - [] folder
   - [] display
   - [] operate
-

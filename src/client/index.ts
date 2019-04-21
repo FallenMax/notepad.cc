@@ -16,6 +16,25 @@ const App: m.FactoryComponent = () => {
   let isSaving = false
   let networkStatus = ''
 
+  const onFocus = () => {}
+  const onBlur = () => {}
+
+  const SaveStatus = {
+    view() {
+      return m(
+        'small.save-status',
+        { class: isSaving ? 'is-active' : undefined },
+        'saving',
+      )
+    },
+  }
+
+  const Network = {
+    view() {
+      return m('small.network-status', networkStatus)
+    },
+  }
+
   Object.keys(networkEventMap).forEach((event) => {
     socket.on(event, () => {
       networkStatus = networkEventMap[event]
@@ -30,21 +49,12 @@ const App: m.FactoryComponent = () => {
 
     view() {
       const href = location.origin + '/' + id
-
-      return m(
-        'main',
-        m('header', [
-          m(
-            'small#save-status',
-            { class: isSaving ? 'is-active' : undefined },
-            'saving',
-          ),
-          m('small#network-status', networkStatus),
-        ]),
-        m('section', [
-          m('.layer', [
-            m('.layer', [
-              m('.layer', [
+      return m('main', [
+        m('header.status', [m(SaveStatus), m(Network)]),
+        m('section.editor-wrapper', [
+          m('.paper', [
+            m('.paper', [
+              m('.paper', [
                 m(Editor, {
                   id,
                   socket,
@@ -52,6 +62,8 @@ const App: m.FactoryComponent = () => {
                     isSaving = saving
                     m.redraw()
                   },
+                  onFocus,
+                  onBlur,
                 }),
               ]),
             ]),
@@ -61,7 +73,7 @@ const App: m.FactoryComponent = () => {
           'footer',
           m('small', m('a.this-page', { href }, decodeURIComponent(href))),
         ),
-      )
+      ])
     },
   }
 }
