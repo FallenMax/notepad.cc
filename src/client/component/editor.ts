@@ -78,6 +78,19 @@ export const Editor: FactoryComponent<EditorProps> = () => {
 
       // operation status
       let operation = 'idle' as 'idle' | 'push' | 'pull'
+      let disableTimer: number
+      const setOperation = (op: 'idle' | 'push' | 'pull') => {
+        operation = op
+        if (op === 'idle') {
+          window.clearTimeout(disableTimer)
+          editor.disabled = false
+        } else {
+          window.clearTimeout(disableTimer)
+          disableTimer = window.setTimeout(() => {
+            editor.disabled = true
+          }, 1000 * 10)
+        }
+      }
 
       // special conditions
       let isCompositing = false
@@ -186,10 +199,10 @@ export const Editor: FactoryComponent<EditorProps> = () => {
             deferSync()
             return
           }
-          operation = 'pull'
+          setOperation('pull')
           vnode.attrs.onSaveStatusChange(true)
           pullRemote(() => {
-            operation = 'idle'
+            setOperation('idle')
             vnode.attrs.onSaveStatusChange(false)
             requestSync()
           })
@@ -210,11 +223,20 @@ export const Editor: FactoryComponent<EditorProps> = () => {
             deferSync()
             return
           }
-          operation = 'push'
+          setOperation('push')
           vnode.attrs.onSaveStatusChange(true)
-          pushLocal(() => {
-            operation = 'idle'
+          editor.disabled = false
+          pushLocal((error) => {
+            if (error) {
+              console.error(error)
+              setOperation('idle')
+              deferSync()
+              editor.disabled = true
+              return
+            }
+            setOperation('idle')
             vnode.attrs.onSaveStatusChange(false)
+            editor.disabled = false
             requestSync()
           })
           return
@@ -281,6 +303,7 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         }
       }
 
+      let periodicSyncTimer: number
       const start = async () => {
         try {
           const result = await fetchNote()
@@ -296,7 +319,7 @@ export const Editor: FactoryComponent<EditorProps> = () => {
           localUpdated = false
           remoteStale = false
 
-          operation = 'idle'
+          setOperation('idle')
           isCompositing = false
 
           await subscribe()
@@ -309,6 +332,10 @@ export const Editor: FactoryComponent<EditorProps> = () => {
           editor.addEventListener('blur', vnode.attrs.onBlur)
           socket.on('note_update', onNoteUpdate)
           window.addEventListener('beforeunload', onBeforeUnload)
+          periodicSyncTimer = window.setInterval(() => {
+            subscribe() // in case server restarted and subscriptions are lost
+            deferSync()
+          }, 5000)
 
           editor.disabled = false
         } catch (error) {
@@ -325,6 +352,7 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         editor.removeEventListener('blur', vnode.attrs.onBlur)
         socket.off('note_update', onNoteUpdate)
         window.removeEventListener('beforeunload', onBeforeUnload)
+        window.clearInterval(periodicSyncTimer)
         // todo
         // unsubscribe()
       }
