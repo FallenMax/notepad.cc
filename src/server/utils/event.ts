@@ -35,10 +35,10 @@ export const createEventEmitter = <
     event: K,
     payload: EventMap[K],
   ): void
-  function emit<K extends Keys>(event: K, payload: EventMap[K]): void {
+  function emit<K extends Keys>(event: K, payload?: EventMap[K]): void {
     if (listeners[event]) {
       listeners[event].forEach((handler) => {
-        handler(payload)
+        handler(payload!)
       })
     }
   }
