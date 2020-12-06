@@ -2,7 +2,7 @@ import hashString = require('string-hash')
 import { ErrorCode, UserError } from '../../common/error'
 import { createEventEmitter } from '../../common/event'
 import { applyPatch, createPatch, Patch } from '../../common/lib/diff3'
-import { createDatabase } from '../lib/database'
+import { openDatabase } from '../lib/database'
 
 const NOTE_MAX_SIZE = 100000
 
@@ -22,8 +22,8 @@ export interface NoteEventMap {
   }
 }
 
-const createNoteService = () => {
-  const db = createDatabase<Note>('notes')
+export const createNoteService = () => {
+  const db = openDatabase<Note>('notes')
 
   const pruneTimer = setInterval(async function removeEmptyNotes() {
     console.warn('removing empty notes...')
@@ -91,7 +91,7 @@ const createNoteService = () => {
 
   const destory = () => {
     clearInterval(pruneTimer)
-    db.quit()
+    db.close()
     service.removeAllListeners()
   }
   const emitter = createEventEmitter<NoteEventMap>()
@@ -107,7 +107,5 @@ const createNoteService = () => {
   }
   return service
 }
-
-export const noteService = createNoteService()
 
 export type NoteService = ReturnType<typeof createNoteService>

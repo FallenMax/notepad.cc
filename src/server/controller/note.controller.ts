@@ -1,8 +1,11 @@
 import { ClientAPI, ServerAPI } from '../../common/api.type'
 import { RpcServer } from '../lib/rpc_server'
-import { noteService } from '../service/note.service.'
+import { NoteService } from '../service/note.service.'
 
-export const noteController = (rpc: RpcServer<ServerAPI, ClientAPI>) => {
+export const registerNoteController = (
+  rpc: RpcServer<ServerAPI, ClientAPI>,
+  noteService: NoteService,
+) => {
   rpc.handle('subscribe', ({ id }, client) => {
     rpc.joinRoom(client.id, id)
   })

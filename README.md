@@ -19,11 +19,19 @@ https://notepad.1976f.com/
     - <kbd>-</kbd>: turn selected block into list
     - ...More to be discovered
 
+## Requirements
+
+- [mongodb](https://www.mongodb.com/)
+
 ## Getting Started
 
 ```shell
-npm install
-npm start
+# make sure you have mongodb running and configured accordingly
+export MONGODB_URL=your-mongodb-url
+export MONGODB_DATABASE=mongdo-database-to-use
+
+yarn
+yarn start
 ```
 
 [diff3]: https://en.wikipedia.org/wiki/Diff3
