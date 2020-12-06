@@ -1,7 +1,8 @@
 import hashString = require('string-hash')
+import { ErrorCode, UserError } from '../../common/error'
+import { createEventEmitter } from '../../common/event'
+import { applyPatch, createPatch, Patch } from '../../common/lib/diff3'
 import { createDatabase } from '../lib/database'
-import { Patch, applyPatch, createPatch } from '../lib/diff3'
-import { createEventEmitter } from '../utils/event'
 
 const NOTE_MAX_SIZE = 100000
 
@@ -40,19 +41,14 @@ const createNoteService = () => {
     patch: Patch
     hash: Hash
     source?: string
-  }): Promise<
-    | { hash: number; patch: Patch }
-    | { errcode: 'HASH_MISMATCH' | 'EXCEEDED_MAX_SIZE' }
-  > => {
+  }): Promise<{ hash: number; patch: Patch }> => {
     const existNote = await getNote(id)
     const result = applyPatch(existNote.note, patch)
     if (result == null || hash !== hashString(result)) {
-      console.warn('[patch] HASH_MISMATCH')
-      return { errcode: 'HASH_MISMATCH' }
+      throw new UserError(ErrorCode.UNKNOWN)
     }
     if (result.length > NOTE_MAX_SIZE) {
-      console.warn('[patch] EXCEEDED_MAX_SIZE')
-      return { errcode: 'EXCEEDED_MAX_SIZE' }
+      throw new UserError(ErrorCode.EXCEEDED_MAX_SIZE)
     }
 
     await db.upsert({ _id: id }, { note: result, _id: id })

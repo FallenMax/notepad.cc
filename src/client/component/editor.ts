@@ -1,12 +1,13 @@
-import hashString from 'string-hash'
 import m, { FactoryComponent } from 'mithril'
-import { merge3, createPatch, applyPatch, Patch } from '../lib/diff3'
-import { UserError } from '../util/error'
-import { isDebugging } from '../util/env'
-import { createNoteService } from '../service/note.service'
-import { START, END } from '../lib/assist/assistor.types'
+import hashString from 'string-hash'
+import { ClientAPI, ServerAPI } from '../../common/api.type'
+import { ErrorCode } from '../../common/error'
 import { assist } from '../lib/assist/assist'
-import { assertNever } from '../util/assert'
+import { END, START } from '../lib/assist/assistor.types'
+import { applyPatch, createPatch, merge3, Patch } from '../lib/diff3'
+import { RpcClient } from '../lib/rpc_client'
+import { isDebugging } from '../util/env'
+import { UserError } from '../util/error'
 
 const noop = (_error?: any) => {}
 
@@ -45,7 +46,7 @@ const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
 
 export interface EditorProps {
   id: string
-  socket: SocketIOClient.Socket
+  rpcClient: RpcClient<ServerAPI, ClientAPI>
   onSaveStatusChange: (isSaving: boolean) => void
   onFocus: () => void
   onBlur: () => void
@@ -57,13 +58,13 @@ export const Editor: FactoryComponent<EditorProps> = () => {
   return {
     oncreate(vnode): void {
       const id = vnode.attrs.id
-      const socket = vnode.attrs.socket
+      const rpcClient = vnode.attrs.rpcClient
 
       //-------------- note service --------------
-      const { subscribe, fetchNote, saveNote } = createNoteService({
-        socket,
-        id,
-      })
+      const subscribe = () => rpcClient.call('subscribe', { id })
+      const fetchNote = () => rpcClient.call('get', { id })
+      const saveNote = (patch: Patch, hash: number) =>
+        rpcClient.call('save', { id, p: patch, h: hash })
 
       //-------------- state --------------
       // note versions
@@ -110,7 +111,7 @@ export const Editor: FactoryComponent<EditorProps> = () => {
       }
 
       //-------------- note operations --------------
-      const pushLocal = (callback = noop) => {
+      const pushLocal = async (callback = noop) => {
         if (isDebugging) {
           console.info('operation:pushLocal')
         }
@@ -119,32 +120,26 @@ export const Editor: FactoryComponent<EditorProps> = () => {
           const patch = createPatch(remote, current)
           const hash = hashString(current)
 
-          saveNote(patch, hash)
-            .then(({ errcode }) => {
-              if (errcode) {
-                switch (errcode) {
-                  case 'HASH_MISMATCH':
-                    remoteStale = true
-                    break
-                  case 'EXCEEDED_MAX_SIZE':
-                    throw new UserError(
-                      `Note's size exceeded limit (100,000 characters).`,
-                    )
-                  default:
-                    return assertNever(errcode)
-                }
-              } else {
-                remote = current
-                common = current
-                remoteUpdated = false
-                remoteStale = false
-                localUpdated = current !== editor.value
-              }
-              callback()
-            })
-            .catch(callback)
-        } catch (error) {
-          callback(error)
+          await saveNote(patch, hash)
+
+          remote = current
+          common = current
+          remoteUpdated = false
+          remoteStale = false
+          localUpdated = current !== editor.value
+          callback()
+        } catch (e) {
+          if (e?.errcode) {
+            switch (e.errcode) {
+              case ErrorCode.HASH_MISMATCH:
+                remoteStale = true
+                break
+              case ErrorCode.EXCEEDED_MAX_SIZE:
+                window.alert(`Note's size exceeded limit (100,000 characters).`)
+                break
+            }
+          }
+          callback(e)
         }
       }
 
@@ -282,7 +277,8 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         }
       }
 
-      const onNoteUpdate = ({ h: hash, p: patch }: { h: number; p: Patch }) => {
+      const onNoteUpdate = (params: { h: number; p: Patch }) => {
+        const { h: hash, p: patch } = params
         const note = applyPatch(remote, patch)
         const verified = note != null && hashString(note) === hash
         if (verified) {
@@ -330,12 +326,12 @@ export const Editor: FactoryComponent<EditorProps> = () => {
           editor.addEventListener('input', onInput)
           editor.addEventListener('focus', vnode.attrs.onFocus)
           editor.addEventListener('blur', vnode.attrs.onBlur)
-          socket.on('note_update', onNoteUpdate)
+          rpcClient.handle('noteUpdate', onNoteUpdate)
           window.addEventListener('beforeunload', onBeforeUnload)
           periodicSyncTimer = window.setInterval(() => {
             subscribe() // in case server restarted and subscriptions are lost
             deferSync()
-          }, 5000)
+          }, 1000 * 60)
 
           editor.disabled = false
         } catch (error) {
@@ -350,7 +346,7 @@ export const Editor: FactoryComponent<EditorProps> = () => {
         editor.removeEventListener('input', onInput)
         editor.removeEventListener('focus', vnode.attrs.onFocus)
         editor.removeEventListener('blur', vnode.attrs.onBlur)
-        socket.off('note_update', onNoteUpdate)
+        // socket.off('noteUpdate', onNoteUpdate)
         window.removeEventListener('beforeunload', onBeforeUnload)
         window.clearInterval(periodicSyncTimer)
         // todo

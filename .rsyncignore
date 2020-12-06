@@ -1,0 +1,17 @@
+.DS_Store
+.git
+node_modules
+*.log
+*.zip
+.cache
+.idea
+.vscode
+.parcel-cache
+/tmp
+# /public
+# /server
+# /common
+/data
+/data_test
+/upload
+

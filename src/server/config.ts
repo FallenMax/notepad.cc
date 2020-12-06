@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { isDev, env } from './utils/env'
+import { env, isDev } from './utils/env'
 
 const rootDir = isDev
   ? path.resolve(__dirname, '../../')

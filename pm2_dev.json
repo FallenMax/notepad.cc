@@ -2,7 +2,7 @@
   "apps": [
     {
       "name": "notepad_dev",
-      "script": "./server/index.js",
+      "script": "./server/server.js",
       "env": {
         "NODE_ENV": "production",
         "PORT": "3001",
