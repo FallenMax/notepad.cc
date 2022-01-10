@@ -91,7 +91,7 @@ export const routes = (noteService: NoteService) => {
   )
 
   router.get(
-    '/api/note/:id',
+    '/api/note/:id*',
     api(async function getNote({ id }: { id: string }) {
       if (typeof id !== 'string' || id === '') {
         throw new UserError(`'id' should be string`)
@@ -102,7 +102,7 @@ export const routes = (noteService: NoteService) => {
   )
 
   router.put(
-    '/api/note/:id',
+    '/api/note/:id*',
     api(async function putNote({ id, note }: { id: string; note: string }) {
       if (typeof id !== 'string' || id === '') {
         throw new UserError(`'id' should be string`)
@@ -115,7 +115,7 @@ export const routes = (noteService: NoteService) => {
   )
 
   router.patch(
-    '/api/note/:id',
+    '/api/note/:id*',
     api(async function appendNote({
       id,
       append,
@@ -134,7 +134,7 @@ export const routes = (noteService: NoteService) => {
   )
 
   router.del(
-    '/api/note/:id',
+    '/api/note/:id*',
     api(async function deleteNote({ id }: { id: string }) {
       if (typeof id !== 'string' || id === '') {
         throw new UserError(`'id' should be string`)
