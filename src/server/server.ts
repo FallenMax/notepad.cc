@@ -1,3 +1,4 @@
+import * as cors from '@koa/cors'
 import * as http from 'http'
 import * as Koa from 'koa'
 import * as bodyParser from 'koa-bodyparser'
@@ -25,23 +26,30 @@ export const start = () => {
 
       await connectDatabase()
 
+      const noteService = createNoteService()
+
       const app = new Koa()
       app.use(error())
       app.use(logger())
       app.use(compress())
       app.use(bodyParser())
-      app.use(routes)
+      app.use(
+        cors({
+          origin: (ctx) => {
+            const origin = ctx.request.headers.origin
+            return origin
+          },
+          credentials: false,
+        }),
+      )
+
+      app.use(routes(noteService))
 
       httpServer = new http.Server(app.callback())
 
       const rpcServer = createRpcServer<ServerAPI, ClientAPI>(httpServer)
 
-      const services = {
-        note: createNoteService(),
-      }
-      const controllers = {
-        note: registerNoteController(rpcServer, services.note),
-      }
+      registerNoteController(rpcServer, noteService)
 
       const port = config.port
       httpServer.listen(port, resolve)

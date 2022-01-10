@@ -27,8 +27,8 @@ export const createNoteService = () => {
 
   const pruneTimer = setInterval(async function removeEmptyNotes() {
     console.warn('removing empty notes...')
-    const count = await db.removeMulti({ note: '' })
-    console.warn(`${count} empty notes removed`)
+    await db.removeMulti({ note: '' })
+    console.warn(`empty notes removed`)
   }, 1000 * 60 * 60)
 
   const patchNote = async ({
