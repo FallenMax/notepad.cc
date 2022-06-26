@@ -1,4 +1,4 @@
-import { DefaultState, Middleware } from 'koa'
+import { DefaultState } from 'koa'
 import * as Router from 'koa-router'
 import * as send from 'koa-send'
 import { UserError } from '../../common/error'
@@ -8,10 +8,10 @@ import { NoteService } from '../service/note.service.'
 import { isDev } from '../utils/env'
 
 const api =
-  (fn: Function): Middleware<DefaultState, { request: { params; body } }> =>
-  async (ctx, next) => {
+  (fn: Function): Router.IMiddleware<DefaultState, {}> =>
+  async (ctx: Router.IRouterContext, next) => {
     const params = {
-      ...ctx.request.params,
+      ...ctx.params,
       ...ctx.request.query,
       ...ctx.request.body,
     }
@@ -29,11 +29,11 @@ const api =
       if (isDev) {
         console.info('[api] result:', result)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error)
-      if (error && error.errmsg) {
+      if (error && (error as UserError).errmsg) {
         ctx.body = {
-          errmsg: error.errmsg,
+          errmsg: (error as UserError).errmsg,
         }
         ctx.status = 400
       } else {
@@ -56,7 +56,7 @@ export const routes = (noteService: NoteService) => {
         root: config.staticDir,
       })
     } catch (err) {
-      if (err.status !== 404) {
+      if ((err as any).status !== 404) {
         throw err
       }
     }

@@ -2,7 +2,7 @@ import { assert } from 'console'
 import * as http from 'http'
 import * as SocketIO from 'socket.io'
 import { SERVER_APIS } from '../../common/api.type'
-import { ErrorCode } from '../../common/error'
+import { ErrorCode, UserError } from '../../common/error'
 import { createEventEmitter } from '../../common/event'
 
 type AnyFunction = (...args: any[]) => any
@@ -89,7 +89,7 @@ export const createRpcServer = <S extends APIMap, C extends APIMap>(
               endpoint,
               error,
             )
-            const errcode = error?.errcode ?? ErrorCode.UNKNOWN
+            const errcode = (error as UserError)?.errcode ?? ErrorCode.UNKNOWN
             reply({ errcode })
           }
         } else {
