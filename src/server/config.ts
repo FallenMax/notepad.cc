@@ -13,4 +13,5 @@ export const config = {
     database: env.MONGODB_DATABASE || 'notepad_dev',
   },
   staticDir: path.resolve(rootDir, './public'),
+  staticMaxAge: 3600000 // 1hr in milliseconds
 }

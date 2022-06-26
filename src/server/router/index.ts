@@ -54,6 +54,7 @@ export const routes = (noteService: NoteService) => {
       const filePath = ctx.path.replace(/^\/dist/, '')
       await send(ctx, filePath, {
         root: config.staticDir,
+        maxage: config.staticMaxAge,
       })
     } catch (err) {
       if ((err as any).status !== 404) {
