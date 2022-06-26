@@ -3,6 +3,7 @@ node_modules
 *.log
 *.zip
 .cache
+.parcel-cache
 .vscode
 /public
 /server
