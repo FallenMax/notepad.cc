@@ -124,7 +124,14 @@ export const routes = (noteService: NoteService) => {
       await ctx.redirect(generatePageId())
     })
     .get('/:id*', async (ctx) => {
-      const noteId = decodeURIComponent(ctx.path.slice(1))
+      const path = ctx.path
+      const trimmed = path.replace(/\/+$/, '')
+      if (trimmed !== path) {
+        ctx.redirect(trimmed)
+        return
+      }
+
+      const noteId = decodeURIComponent(path.slice(1))
       const html = await renderIndexHtml(noteId)
       ctx.body = html
       ctx.type = 'text/html'
