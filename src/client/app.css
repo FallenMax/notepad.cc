@@ -2,7 +2,8 @@ html,
 body {
   background: var(--background-pattern) left top repeat;
   background-color: var(--background-color);
-  font-family: sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-color);
@@ -50,12 +51,12 @@ body {
 .wrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: baseline;
   justify-content: stretch;
   width: 800px;
   gap: 2px;
   max-width: calc(100vw - 16px);
-  height: 800px;
+  height: 90vh;
   max-height: calc(100vh - 24px);
 }
 @media (max-width: 800px) {
@@ -140,17 +141,6 @@ main {
   }
 }
 
-/* footer {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  a.this-page {
-    font-size: 0.9em;
-    text-decoration: none;
-    color: #9ba0a5;
-    &:hover,
-    &:active {
-      color: #84878c;
-    }
-  }
-} */
+footer {
+  height: 18px;
+}

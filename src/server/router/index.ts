@@ -46,15 +46,13 @@ export const routes = (noteService: NoteService) => {
   async function renderIndexHtml(noteId: string) {
     const note = await noteService.getNote(noteId)
     const ga = process.env.GOOGLE_ANALYTICS_ID
+    const safeNoteId = encodeHtml(noteId)
     const html = indexHtml
       .replace(
         '<!-- %script% -->',
         `<script>window.__note = ${JSON.stringify(note.note)}</script>`,
       )
-      .replace(
-        '<title>1paper</title>',
-        `<title>${encodeHtml(noteId)}·1paper</title>`,
-      )
+      .replace('<title>1paper</title>', `<title>${safeNoteId}·1paper</title>`)
       .replace(
         '<!-- %google-analytics% -->',
         ga
