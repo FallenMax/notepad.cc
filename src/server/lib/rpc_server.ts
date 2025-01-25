@@ -37,9 +37,10 @@ export class RpcServer<
             const result = await handler(params, client)
             reply(result)
           } catch (error) {
-            console.error('[RpcServer] Handler error:', method, error)
             const errcode =
               error instanceof UserError ? error.errcode : ErrorCode.UNKNOWN
+            console.warn('[RpcServer] Error handling: ', method, errcode)
+            console.error(error)
             reply({ errcode })
           }
         })

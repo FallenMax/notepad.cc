@@ -42,7 +42,13 @@ export class RpcClient<
   ): Promise<ReturnType<ServerAPI[T]>> {
     return new Promise((resolve, reject) => {
       try {
-        this.socket.emit(method as string, params, resolve)
+        this.socket.emit(method as string, params, (response) => {
+          if (response?.errcode) {
+            reject(response)
+          } else {
+            resolve(response)
+          }
+        })
       } catch (error) {
         reject(error)
       }
