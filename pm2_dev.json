@@ -2,12 +2,10 @@
   "apps": [
     {
       "name": "notepad_dev",
-      "script": "./server/server.js",
+      "script": "./server/index.js",
       "env": {
         "NODE_ENV": "production",
         "PORT": "3001",
-        "DATA_DIR": "/var/lib/notepad_dev/data",
-
         "MONGODB_URL": "mongodb://localhost:27017",
         "MONGODB_DATABASE": "notepad_dev"
       }

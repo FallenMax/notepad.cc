@@ -8,16 +8,44 @@
       content="width=device-width, maximum-scale=1.0, initial-scale=1, user-scalable=no"
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Notepad" />
-    <link rel="apple-touch-icon" href="./assets/favicon.png" />
-    <link rel="icon" sizes="192x192" href="./assets/favicon.png" />
-    <meta name="theme-color" content="#edeef0" />
-    <title>notepad</title>
-    <!-- <link rel="manifest" href="./manifest.json"> -->
-    <link rel="stylesheet" href="./style/main.css" />
-    <script src="./app.ts" async></script>
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="1paper" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#edeef0"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="rgb(34 34 34)"
+    />
+    <title>1paper</title>
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+    <link rel="icon" sizes="192x192" href="/assets/icon-192.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="manifest" href="/assets/manifest.webmanifest" />
+    <link rel="stylesheet" href="./app.css" />
+    <!-- %script% -->
+    <!-- %google-analytics% -->
   </head>
-
-  <body></body>
-  <script src="./ga.js" async defer></script>
+  <body>
+    <div class="wrapper">
+      <header class="status">
+        <small class="save-status">Saving...</small>
+        <small class="network-status" style="display: none"
+          >Connecting...</small
+        >
+      </header>
+      <main>
+        <textarea class="editor" spellcheck="false" disabled></textarea>
+      </main>
+    </div>
+    <script src="./app.ts" async type="module"></script>
+  </body>
 </html>

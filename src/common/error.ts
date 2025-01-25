@@ -9,7 +9,8 @@ export class UserError extends Error {
 
   constructor(msgOrCode: string | ErrorCode, code?: ErrorCode, data?: any) {
     const errmsg =
-      typeof msgOrCode === 'string' ? msgOrCode : ErrorMessage[msgOrCode]
+      (typeof msgOrCode === 'string' ? msgOrCode : ErrorMessage[msgOrCode]) ??
+      ErrorMessage[ErrorCode.UNKNOWN]
     const errcode = typeof msgOrCode === 'string' ? code : msgOrCode
     super(errmsg)
 

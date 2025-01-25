@@ -2,14 +2,13 @@
   "apps": [
     {
       "name": "notepad",
-      "script": "./server/server.js",
+      "script": "./server/index.js",
       "env": {
         "NODE_ENV": "production",
         "PORT": "3000",
-        "DATA_DIR": "/var/lib/notepad/data",
-
         "MONGODB_URL": "mongodb://localhost:27017",
-        "MONGODB_DATABASE": "notepad"
+        "MONGODB_DATABASE": "notepad",
+        "GOOGLE_ANALYTICS_ID": "G-B9DGXB165Z"
       }
     }
   ]

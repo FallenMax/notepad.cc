@@ -1,8 +1,8 @@
-import { assistors } from './assistors'
-import { Keys, EditorState, START, END } from './assistor.types'
 import { isMac } from '../../util/env'
+import { EditorState, END, Keys, START } from './assistor.types'
+import { assistors } from './assistors'
 
-const isSameKey = (a: Keys, b: Keys): boolean => {
+function isSameKey(a: Keys, b: Keys): boolean {
   return (
     a.key.toLowerCase() === b.key.toLowerCase() &&
     Boolean(a.shift) === Boolean(b.shift) &&
@@ -11,7 +11,7 @@ const isSameKey = (a: Keys, b: Keys): boolean => {
   )
 }
 
-const fromKeyboardEvent = (e: KeyboardEvent): Keys => {
+function fromKeyboardEvent(e: KeyboardEvent): Keys {
   return {
     key: e.key.toLowerCase(),
     shift: Boolean(e.shiftKey),
@@ -20,11 +20,11 @@ const fromKeyboardEvent = (e: KeyboardEvent): Keys => {
   }
 }
 
-const applyAssistor = (
+function applyAssistor(
   state: EditorState,
   selection: string,
   keys: Keys,
-): EditorState | undefined => {
+): EditorState | undefined {
   const hasSelection = selection !== ''
   let transformed: EditorState | undefined
   for (let index = 0; index < assistors.length; index++) {

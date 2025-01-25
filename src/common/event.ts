@@ -1,110 +1,45 @@
-export const createEventEmitter = <
-  EventMap extends { [K: string]: any } = { [K: string]: any }
->(): EventEmitter<EventMap> => {
-  type Keys = keyof EventMap
-  type KeysPayloadRequired = {
-    [K in Keys]: EventMap[K] extends undefined ? never : K
-  }[Keys]
+import { Disposable } from './disposable'
+type EventHandler<T> = (payload: T) => void
 
-  type KeysPayloadOptional = Exclude<Keys, KeysPayloadRequired>
+export class EventEmitter<
+  EventMap extends { [K: string]: any } = { [K: string]: any },
+> extends Disposable {
+  private listeners: {
+    [K in keyof EventMap]: EventHandler<EventMap[K]>[]
+  } = Object.create(null)
 
-  type Handler<K extends keyof EventMap> = (payload: EventMap[K]) => void
-  type HandlerDesc<K extends keyof EventMap> = {
-    handler: Handler<K>
-    once: boolean
+  constructor() {
+    super()
+    this.register(() => {
+      this.listeners = Object.create(null)
+    })
   }
 
-  let listeners = Object.create(null) as { [K in Keys]: HandlerDesc<K>[] }
+  on<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>) {
+    if (!this.listeners[event]) this.listeners[event] = []
 
-  const on = <K extends Keys>(event: K, handler: Handler<K>) => {
-    if (!listeners[event]) {
-      listeners[event] = []
-    }
-    if (!listeners[event].some((item) => item.handler === handler)) {
-      listeners[event].push({
-        handler: handler,
-        once: false,
-      })
-    }
+    this.listeners[event].push(handler)
+    return () => this.off(event, handler)
   }
 
-  const once = <K extends Keys>(event: K, handler: Handler<K>) => {
-    if (!listeners[event]) {
-      listeners[event] = []
-    }
-    if (!listeners[event].some((h) => h.handler === handler)) {
-      listeners[event].push({
-        handler: handler,
-        once: true,
-      })
-    }
-  }
-  const off = <K extends Keys>(event: K, handler: Handler<K>) => {
-    if (listeners[event]) {
-      listeners[event] = listeners[event].filter((h) => h.handler !== handler)
-    }
-  }
-
-  function emit<K extends KeysPayloadOptional>(
-    event: K,
-    payload?: EventMap[K],
-  ): void
-  function emit<K extends KeysPayloadRequired>(
-    event: K,
-    payload: EventMap[K],
-  ): void
-  function emit<K extends Keys>(event: K, payload?: EventMap[K]): void {
-    if (listeners[event]) {
-      listeners[event].forEach((handler) => {
-        handler.handler(payload as EventMap[K])
-        if (handler.once) {
-          off(event, handler.handler)
-        }
-      })
-    }
-  }
-
-  const removeAllListeners = () => {
-    listeners = Object.create(null) as { [K in Keys]: HandlerDesc<K>[] }
-  }
-
-  return { on, once, off, emit, removeAllListeners }
-}
-
-export type EventEmitter<
-  EventMap extends { [K: string]: any } = { [K: string]: any }
-> = {
-  // type preserve hack
-  __eventMap?: EventMap
-  on<K extends keyof EventMap>(
-    event: K,
-    handler: (payload: EventMap[K]) => void,
-  ): void
-  once<K extends keyof EventMap>(
-    event: K,
-    handler: (payload: EventMap[K]) => void,
-  ): void
   off<K extends keyof EventMap>(
     event: K,
-    handler: (payload: EventMap[K]) => void,
-  ): void
-  emit<K extends keyof EventMap>(event: K, payload?: EventMap[K]): void
-  removeAllListeners(): void
-}
+    handler: EventHandler<EventMap[K]>,
+  ): void {
+    if (!this.listeners[event]) return
 
-export class EventEmitterClass<
-  EventMap extends { [K: string]: any } = { [K: string]: any }
-> {
-  private _emitter = createEventEmitter<EventMap>()
-  // type preserve hack
-  __eventMap?: EventMap
-  on = this._emitter.on
-  off = this._emitter.off
-  once = this._emitter.once
-  emit = this._emitter.emit
-  removeAllListeners = this._emitter.removeAllListeners
-}
+    const index = this.listeners[event].indexOf(handler)
+    if (index !== -1) {
+      this.listeners[event].splice(index, 1)
+    }
+  }
 
-export type EventMapOf<T extends EventEmitter> = T extends EventEmitter
-  ? Exclude<T['__eventMap'], undefined>
-  : never
+  emit<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {
+    if (!this.listeners[event]) return
+
+    const handlers = this.listeners[event].slice()
+    for (let i = 0; i < handlers.length; i++) {
+      handlers[i](payload)
+    }
+  }
+}

@@ -1,78 +1,104 @@
-import * as cors from '@koa/cors'
+import cors from '@koa/cors'
 import * as http from 'http'
-import * as Koa from 'koa'
-import * as bodyParser from 'koa-bodyparser'
-import * as compress from 'koa-compress'
-import * as logger from 'koa-logger'
+import Koa from 'koa'
+import bodyParser from 'koa-bodyparser'
+import compress from 'koa-compress'
+import logger from 'koa-logger'
 import { ClientAPI, ServerAPI } from '../common/api.type'
+import { Disposable } from '../common/disposable'
 import { config } from './config'
-import { registerNoteController } from './controller/note.controller'
-import { connectDatabase, disconnectDatabase } from './lib/database'
-import { createRpcServer } from './lib/rpc_server'
-import { error } from './middleware/errorHandler'
+import { DbConnection } from './lib/database'
+import { RpcServer } from './lib/rpc_server'
+import { error } from './middleware/error_handler'
 import { routes } from './router'
-import { createNoteService } from './service/note.service.'
-import { isTesting } from './utils/env'
+import { NoteService } from './service/note.service'
 
-let httpServer: http.Server | undefined
+export class Server extends Disposable {
+  private connection: DbConnection
+  private noteService!: NoteService
+  private httpServer!: http.Server
+  private rpcServer!: RpcServer<ServerAPI, ClientAPI>
+  private logger = console
 
-export const start = () => {
-  return new Promise<void>(async (resolve, reject) => {
-    try {
-      console.info('--- start ---')
-      if (httpServer) {
-        throw new Error('server is already running')
-      }
-
-      await connectDatabase()
-
-      const noteService = createNoteService()
-
-      const app = new Koa()
-      app.use(error())
-      app.use(logger())
-      app.use(compress())
-      app.use(bodyParser())
-      app.use(
-        cors({
-          origin: (ctx) => {
-            const origin = ctx.request.headers.origin
-            return origin
-          },
-          credentials: false,
-        }),
-      )
-
-      app.use(routes(noteService))
-
-      httpServer = new http.Server(app.callback())
-
-      const rpcServer = createRpcServer<ServerAPI, ClientAPI>(httpServer)
-
-      registerNoteController(rpcServer, noteService)
-
-      const port = config.port
-      httpServer.listen(port, resolve)
-
-      console.info('Listening on', port)
-    } catch (error) {
-      reject(error)
-    }
-  })
-}
-
-export const quit = async () => {
-  console.info('--- quit ---')
-  if (httpServer) {
-    httpServer.close()
-    httpServer = undefined
+  constructor() {
+    super()
+    this.connection = this.register(new DbConnection())
   }
-  await disconnectDatabase()
-}
+  async start() {
+    this.logger.info('server start')
+    // db
+    this.logger.info('connecting to database...')
+    await this.connection.connect()
 
-if (!isTesting) {
-  start().catch((e) => {
-    console.error(e)
-    process.exit(-1)
-  })
+    // service
+    this.logger.info('initializing note service...')
+    this.noteService = this.register(new NoteService(this.connection))
+
+    // http server
+    this.logger.info('initializing http server...')
+    const app = new Koa()
+    app.use(error())
+    app.use(logger())
+    app.use(compress())
+    app.use(bodyParser())
+    app.use(
+      // TODO should we?
+      cors({
+        origin: (ctx) => {
+          const origin = ctx.request.headers.origin
+          return origin
+        },
+        credentials: false,
+      }),
+    )
+
+    app.use(routes(this.noteService))
+    this.httpServer = new http.Server(app.callback())
+
+    // rpc server
+    this.rpcServer = this.register(
+      new RpcServer<ServerAPI, ClientAPI>(this.httpServer, {
+        subscribe: ({ id }, client) => {
+          this.rpcServer.joinRoom(client.id, id)
+        },
+        unsubscribe: ({ id }, client) => {
+          this.rpcServer.leaveRoom(client.id, id)
+        },
+        get: async ({ id }) => {
+          return await this.noteService.getNote(id)
+        },
+        save: async ({ id, p, h }, client) => {
+          console.info(`saving note for: ${id}`)
+          // FIXME queue
+          await this.noteService.patchNote({
+            id,
+            patch: p,
+            hash: h,
+            source: client.id,
+          })
+          this.rpcServer.callClient(
+            'noteUpdate',
+            { id, h, p },
+            {
+              rooms: [id],
+              exclude: client.id,
+            },
+          )
+        },
+      }),
+    )
+
+    // listen
+    const port = config.port
+    await new Promise<void>((resolve) => {
+      this.httpServer.listen(port, resolve)
+      this.register(() => this.httpServer.close())
+    })
+
+    this.logger.info('Listening on', port)
+
+    this.register(() => {
+      this.logger.info('server shutdown')
+    })
+  }
 }

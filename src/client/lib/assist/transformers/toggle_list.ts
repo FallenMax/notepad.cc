@@ -1,4 +1,4 @@
-import { START, END, Transformer, BULLET } from '../assistor.types'
+import { BULLET, END, START, Transformer } from '../assistor.types'
 
 // to list items:
 // ===
@@ -35,15 +35,21 @@ export const toggleList: Transformer = (state) => {
   if (match) {
     const [matched] = match
     const lines = matched.replace(CURSOR_REG, '').split('\n')
-    const everyLineHasBullet = lines.every((line) => BULLET_REG.test(line))
+    const everyLineHasBullet = lines.every((line) =>
+      line.trim() ? BULLET_REG.test(line) : true,
+    )
     const prependBullet = (line: string) => {
       const match = BULLET_REG.exec(line)
       if (match) {
         return line
       } else {
-        return line.replace(/^ */gm, (match) => {
-          return match + '- '
-        })
+        if (line.trim()) {
+          return line.replace(/^ */gm, (match) => {
+            return match + '- '
+          })
+        } else {
+          return line
+        }
       }
     }
     const stripBullet = (line: string) => {

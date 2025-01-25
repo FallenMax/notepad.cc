@@ -1,87 +1,65 @@
-import m from 'mithril'
 import { ClientAPI, ServerAPI } from '../common/api.type'
-import { generateId } from '../common/lib/generate_id'
+import { generatePageId } from '../common/lib/generate_id'
 import { Editor } from './component/editor'
-import { createRpcClient, RpcClientEvent } from './lib/rpc_client'
+import { RpcClient } from './lib/rpc_client'
+import { NoteService } from './service/note.service'
 
-const id = decodeURIComponent(location.pathname.slice(1))
-if (id === '') {
-  location.replace('/' + generateId())
+function $(selector: string) {
+  return document.querySelector(selector) as HTMLElement
 }
 
-const networkEventMap: { [K in RpcClientEvent]: string } = {
-  open: '',
-  error: 'connection lost',
-  close: 'connection lost',
-  reconnect: '',
-  reconnect_attempt: 'connection lost',
-  reconnect_failed: 'connection lost',
-}
+class App {
+  private rpcClient: RpcClient<ServerAPI, ClientAPI>
+  private noteService: NoteService
+  private editor: Editor
+  private $saveStatus = $('.save-status')!
+  private $networkStatus = $('.network-status')!
+  private $editor = $('.editor')!
 
-const App: m.FactoryComponent = () => {
-  let isSaving = false
-  let isApiClientReady = false
-  let networkStatus = ''
-
-  const rpcClient = createRpcClient<ServerAPI, ClientAPI>()
-
-  ;(Object.keys(networkEventMap) as RpcClientEvent[]).forEach((event) => {
-    rpcClient.on(event, () => {
-      networkStatus = networkEventMap[event] || ''
-      m.redraw()
+  constructor() {
+    this.rpcClient = new RpcClient<ServerAPI, ClientAPI>({
+      noteUpdate: (payload) => {
+        this.noteService.emit('noteUpdate', payload)
+      },
     })
-  })
+    this.noteService = new NoteService(this.rpcClient)
+    this.editor = new Editor(this.$editor as HTMLTextAreaElement, {
+      id,
+      noteService: this.noteService,
+      onSaveStatusChange: this.handleSaveStatusChange,
+    })
+  }
 
-  rpcClient.ready().then(() => {
-    isApiClientReady = true
-    m.redraw()
-  })
+  init() {
+    this.rpcClient.on('connected', () => {
+      this.$networkStatus.style.display = 'none'
+    })
+    this.rpcClient.on('disconnected', () => {
+      this.$networkStatus.style.display = 'block'
+    })
 
-  return {
-    oninit(): void {
-      document.title = `${id} · notepad`
-    },
+    this.editor.init()
+  }
 
-    view() {
-      const href = location.origin + '/' + id
-      if (!isApiClientReady) {
-        return undefined
-      }
-      return m('main', [
-        m('header.status', [
-          m(
-            'small.save-status',
-            { class: isSaving ? 'is-active' : undefined },
-            'saving',
-          ),
-          m('small.network-status', networkStatus),
-        ]),
-
-        m('section.editor-wrapper', [
-          m('.paper', [
-            m('.paper', [
-              m('.paper', [
-                m(Editor, {
-                  rpcClient,
-                  id,
-                  onSaveStatusChange: (saving: boolean) => {
-                    isSaving = saving
-                    m.redraw()
-                  },
-                  onFocus() {},
-                  onBlur() {},
-                }),
-              ]),
-            ]),
-          ]),
-        ]),
-        m(
-          'footer',
-          m('small', m('a.this-page', { href }, decodeURIComponent(href))),
-        ),
-      ])
-    },
+  private handleSaveStatusChange = (isSaving: boolean) => {
+    this.$saveStatus.classList.toggle('is-active', isSaving)
   }
 }
 
-m.mount(document.body, App)
+const id = decodeURIComponent(location.pathname.slice(1))
+if (id === '') {
+  location.replace('/' + generatePageId())
+} else {
+  const app = new App()
+  app.init()
+}
+
+// setup service worker
+// async function registerServiceWorker() {
+//   await navigator.serviceWorker.register('/assets/sw.js', {
+//     scope: '/',
+//   })
+// }
+// registerServiceWorker().catch((e) => {
+//   console.error(`Failed to register sw: ${e}`)
+// })

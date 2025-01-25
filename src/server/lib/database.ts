@@ -1,6 +1,7 @@
 import * as MongoDB from 'mongodb'
+import { assert } from '../../common/assert'
+import { Disposable } from '../../common/disposable'
 import { config } from '../config'
-import { wait } from '../utils/wait'
 
 export interface Id {
   _id: string
@@ -9,6 +10,7 @@ export interface Id {
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] | DeepPartial<T[P]> | undefined
 }
+
 type Nullable<T> = {
   [P in keyof T]?: T[P] | null | undefined
 }
@@ -18,135 +20,123 @@ export type FindOption<T> = {
   limit?: number
   skip?: number
 }
-export interface Database<T extends Id> {
-  add: (item: T) => Promise<void>
-  addMulti: (items: T[]) => Promise<void>
-  find: (query: DeepPartial<T>, option?: FindOption<T>) => Promise<T[]>
-  findOne: (query: DeepPartial<T>) => Promise<T | undefined>
-  findAll: (option?: FindOption<T>) => Promise<T[]>
-  count: (query: DeepPartial<T>) => Promise<number>
-  remove: (query: DeepPartial<T>) => Promise<void>
-  removeMulti: (query: DeepPartial<T>) => Promise<void>
-  update: (query: DeepPartial<T> & Id, item: Nullable<T>) => Promise<T>
-  upsert: (query: DeepPartial<T> & Id, item: T) => Promise<void>
-  setIndex(field: keyof T): void
-  close: () => void
-}
 
-let client: MongoDB.MongoClient | undefined
-let mongoDatabase: MongoDB.Db | undefined
+export class DbConnection extends Disposable {
+  client!: MongoDB.MongoClient
+  db!: MongoDB.Db
 
-let openedClient = 0
-
-const filterObject = <T>(
-  o: Record<string, T>,
-  predicate: (value: T, key: string, obj: Record<string, T>) => boolean,
-): Record<string, T> => {
-  let filtered = {} as Record<string, T>
-  for (const [key, value] of Object.entries(o)) {
-    if (predicate(value, key, o)) {
-      filtered[key] = value
-    }
+  constructor() {
+    super()
+    this.register(() => {
+      this.close()
+    })
   }
-  return filtered
-}
 
-export const connectDatabase = async () => {
-  openedClient++
-  if (client) {
-    return
+  async connect() {
+    assert(!this.client, 'Database already connected')
+    this.client = await MongoDB.MongoClient.connect(config.mongodb.url)
+    this.db = this.client.db(config.mongodb.database)
   }
-  const url = config.mongodb.url
-  const dbName = config.mongodb.database
 
-  console.info('[mongodb] connect')
-  client = await MongoDB.MongoClient.connect(url, {
-    useUnifiedTopology: true,
-  })
-  mongoDatabase = client.db(dbName)
-
-  return client
-}
-
-export const disconnectDatabase = async () => {
-  openedClient--
-  if (!client) {
-    throw new Error('[mongodb] no active client')
-  }
-  if (openedClient <= 0) {
-    console.warn('[mongodb] disconnecting after 1sec...')
-    await wait(1000)
-    if (openedClient <= 0) {
-      console.info('[mongodb] disconnect')
-      await client.close()
-      client = undefined
-      mongoDatabase = undefined
+  async close() {
+    if (this.client) {
+      await this.client.close()
+      this.client = undefined!
+      this.db = undefined!
     }
   }
 }
 
-export function openDatabase<T extends Id>(name: string): Database<T> {
-  let db: MongoDB.Collection = mongoDatabase!.collection(name)
-  let indices: { [K in keyof T]?: number } | undefined = {}
+export class Table<T extends Id> {
+  private collection: MongoDB.Collection<T>
+  private indices = new Set<keyof T>()
 
-  const database: Database<T> = {
-    add: async (item) => {
-      await db.insertOne(item as any)
-    },
-    addMulti: async (items) => {
-      await db.insertMany(items as any)
-    },
-    // @ts-ignore
-    find: async (query, option) => {
-      let { limit, skip, sort } = option || {}
-      let cursor = db.find(query)
-      if (sort) {
-        cursor = cursor.sort(sort)
-      }
-      if (skip) {
-        cursor = cursor.skip(skip)
-      }
-      if (limit) {
-        if (Number.isFinite(limit)) {
-          cursor = cursor.limit(limit)
-        }
-      }
-      return await cursor.toArray()
-    },
-    count: async (query) => {
-      return await db.countDocuments(query)
-    },
-    findOne: async (query) => {
-      return (await db.findOne(query)) || undefined
-    },
-    // @ts-ignore
-    findAll: async (option) => {
-      // @ts-ignore
-      return await database.find({}, option)
-    },
-    remove: async (query) => {
-      await db.deleteOne(query)
-    },
-    removeMulti: async (query) => {
-      await db.deleteMany(query)
-    },
-    update: async (query, item) => {
-      await db.updateOne(query, {
-        $set: filterObject(item as any, (value) => value !== undefined) as any,
-      })
-      return (await database.findOne(query))!
-    },
-    upsert: async (query, item) => {
-      await db.updateOne(query, { $set: item }, { upsert: true })
-    },
-    setIndex: async (field) => {
-      if (!indices) {
-        indices = {}
-      }
-      indices[field] = 1
-    },
-    close: () => {},
+  constructor(connection: DbConnection, name: string) {
+    this.collection = connection.db.collection<T>(name)
   }
 
-  return database
+  async add(item: T): Promise<void> {
+    await this.collection.insertOne(item as MongoDB.OptionalUnlessRequiredId<T>)
+  }
+
+  async addMulti(items: T[]): Promise<void> {
+    await this.collection.insertMany(
+      items as MongoDB.OptionalUnlessRequiredId<T>[],
+    )
+  }
+
+  async find(query: DeepPartial<T>, option?: FindOption<T>): Promise<T[]> {
+    const { limit, skip, sort } = option || {}
+    let cursor = this.collection.find(query as any)
+
+    if (sort) {
+      cursor = cursor.sort(sort as any)
+    }
+    if (skip) {
+      cursor = cursor.skip(skip)
+    }
+    if (limit && Number.isFinite(limit)) {
+      cursor = cursor.limit(limit)
+    }
+
+    return (await cursor.toArray()) as T[]
+  }
+
+  async findOne(query: DeepPartial<T>): Promise<T | undefined> {
+    const result = await this.collection.findOne(query as any)
+    return (result as T) || undefined
+  }
+
+  async findAll(option?: FindOption<T>): Promise<T[]> {
+    return this.find({}, option)
+  }
+
+  async count(query: DeepPartial<T>): Promise<number> {
+    return this.collection.countDocuments(query as any)
+  }
+
+  async remove(query: DeepPartial<T>): Promise<void> {
+    await this.collection.deleteOne(query as any)
+  }
+
+  async removeMulti(query: DeepPartial<T>): Promise<number> {
+    const result = await this.collection.deleteMany(query as any)
+    return result.deletedCount
+  }
+
+  async update(query: DeepPartial<T> & Id, item: Nullable<T>): Promise<T> {
+    const filteredItem = this.filterUndefined(item)
+    await this.collection.updateOne(query as any, {
+      $set: filteredItem as any,
+    })
+    const updated = await this.findOne(query)
+    if (!updated) throw new Error('Update failed: Document not found')
+    return updated
+  }
+
+  async upsert(query: DeepPartial<T> & Id, item: T): Promise<void> {
+    await this.collection.updateOne(
+      query as any,
+      { $set: item },
+      { upsert: true },
+    )
+  }
+
+  async setIndex(field: keyof T): Promise<void> {
+    if (this.indices.has(field)) return
+    await this.collection.createIndex({ [field]: 1 })
+    this.indices.add(field)
+  }
+
+  private filterUndefined<U extends object>(
+    obj: U,
+  ): { [K in keyof U]: Exclude<U[K], undefined> } {
+    const result: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        result[key] = value
+      }
+    }
+    return result
+  }
 }

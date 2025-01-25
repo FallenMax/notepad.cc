@@ -30,8 +30,8 @@ https://notepad.1976f.com/
 export MONGODB_URL=your-mongodb-url
 export MONGODB_DATABASE=mongdo-database-to-use
 
-yarn
-yarn start
+pnpm install
+pnpm start
 ```
 
 [diff3]: https://en.wikipedia.org/wiki/Diff3

@@ -1,11 +1,9 @@
-import m, { FactoryComponent } from 'mithril'
 import hashString from 'string-hash'
-import { ClientAPI, ServerAPI } from '../../common/api.type'
 import { ErrorCode } from '../../common/error'
+import { applyPatch, createPatch, merge3, Patch } from '../../common/lib/diff3'
 import { assist } from '../lib/assist/assist'
 import { END, START } from '../lib/assist/assistor.types'
-import { applyPatch, createPatch, merge3, Patch } from '../lib/diff3'
-import { RpcClient } from '../lib/rpc_client'
+import { NoteService } from '../service/note.service'
 import { isDebugging } from '../util/env'
 import { UserError } from '../util/error'
 
@@ -14,11 +12,11 @@ const noop = (_error?: any) => {}
 const showError = (e: any) => {
   console.error(e)
   window.alert(
-    (e && e.errmsg) || 'Unknown error occured, please refresh to retry.',
+    (e && e.errmsg) || 'Unknown error occurred, please refresh to retry.',
   )
 }
 
-// attempt to set textarea value while perserving selected range
+// attempt to set textarea value while preserving selected range
 const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
   if (value === textarea.value) {
     return
@@ -46,328 +44,293 @@ const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
 
 export interface EditorProps {
   id: string
-  rpcClient: RpcClient<ServerAPI, ClientAPI>
+  noteService: NoteService
   onSaveStatusChange: (isSaving: boolean) => void
-  onFocus: () => void
-  onBlur: () => void
 }
 
-export const Editor: FactoryComponent<EditorProps> = () => {
-  let teardown = () => {}
+export class Editor {
+  private textarea: HTMLTextAreaElement
+  private teardown: () => void = () => {}
 
-  return {
-    oncreate(vnode): void {
-      const id = vnode.attrs.id
-      const rpcClient = vnode.attrs.rpcClient
+  constructor(textarea: HTMLTextAreaElement, private props: EditorProps) {
+    this.textarea = textarea
+  }
 
-      //-------------- note service --------------
-      const subscribe = () => rpcClient.call('subscribe', { id })
-      const fetchNote = () => rpcClient.call('get', { id })
-      const saveNote = (patch: Patch, hash: number) =>
-        rpcClient.call('save', { id, p: patch, h: hash })
+  async init() {
+    //-------------- state --------------
+    // note versions
+    let common = ''
+    let remote = ''
 
-      //-------------- state --------------
-      // note versions
-      const editor = vnode.dom as HTMLTextAreaElement
-      let common = ''
-      let remote = ''
+    // branch status
+    let remoteUpdated = false
+    let localUpdated = false
+    let remoteStale = false
 
-      // branch status
-      let remoteUpdated = false
-      let localUpdated = false
-      let remoteStale = false
-
-      // operation status
-      let operation = 'idle' as 'idle' | 'push' | 'pull'
-      let disableTimer: number
-      const setOperation = (op: 'idle' | 'push' | 'pull') => {
-        operation = op
-        if (op === 'idle') {
-          window.clearTimeout(disableTimer)
-          editor.disabled = false
-        } else {
-          window.clearTimeout(disableTimer)
-          disableTimer = window.setTimeout(() => {
-            editor.disabled = true
-          }, 1000 * 10)
-        }
+    // operation status
+    let operation = 'idle' as 'idle' | 'push' | 'pull'
+    let disableTimer: number
+    const setOperation = (op: 'idle' | 'push' | 'pull') => {
+      operation = op
+      if (op === 'idle') {
+        window.clearTimeout(disableTimer)
+        this.textarea.disabled = false
+      } else {
+        window.clearTimeout(disableTimer)
+        disableTimer = window.setTimeout(() => {
+          this.textarea.disabled = true
+        }, 1000 * 10)
       }
+    }
 
-      // special conditions
-      let isCompositing = false
+    // special conditions
+    let isCompositing = false
 
-      const getState = () => {
-        return {
-          remoteUpdated,
-          localUpdated,
-          remoteStale,
-          operation,
-          isCompositing,
-        }
-      }
+    //-------------- note operations --------------
+    const pushLocal = async (callback = noop) => {
       if (isDebugging) {
-        // @ts-ignore
-        window.s = getState
+        console.info('operation:pushLocal')
       }
+      try {
+        const current = this.textarea.value
+        const patch = createPatch(remote, current)
+        const hash = hashString(current)
 
-      //-------------- note operations --------------
-      const pushLocal = async (callback = noop) => {
-        if (isDebugging) {
-          console.info('operation:pushLocal')
-        }
-        try {
-          const current = editor.value
-          const patch = createPatch(remote, current)
-          const hash = hashString(current)
+        await this.props.noteService.saveNote(this.props.id, patch, hash)
 
-          await saveNote(patch, hash)
-
-          remote = current
-          common = current
-          remoteUpdated = false
-          remoteStale = false
-          localUpdated = current !== editor.value
-          callback()
-        } catch (e) {
-          if (e?.errcode) {
-            switch (e.errcode) {
-              case ErrorCode.HASH_MISMATCH:
-                remoteStale = true
-                break
-              case ErrorCode.EXCEEDED_MAX_SIZE:
-                window.alert(`Note's size exceeded limit (100,000 characters).`)
-                break
-            }
-          }
-          callback(e)
-        }
-      }
-
-      const pullRemote = (callback = noop) => {
-        if (isDebugging) {
-          console.info('operation:pullRemote')
-        }
-        fetchNote()
-          .then(({ note }) => {
-            remote = note
-            remoteStale = false
-            remoteUpdated = false
-          })
-          .then(callback)
-          .catch(callback)
-      }
-
-      const rebaseLocal = (callback = noop) => {
-        if (isDebugging) {
-          console.info('operation:rebaseLocal')
-        }
-        let rebasedLocal = merge3(remote, common, editor.value)
-        if (rebasedLocal == null) {
-          console.warn('failed to merge, discarding local note :(')
-          rebasedLocal = remote
-        }
-        setTextareaValue(editor, rebasedLocal)
-        common = remote
+        remote = current
+        common = current
         remoteUpdated = false
-        localUpdated = true
-
+        remoteStale = false
+        localUpdated = current !== this.textarea.value
         callback()
-      }
-
-      const forwardLocal = (callback = noop) => {
-        if (isDebugging) {
-          console.info('operation:forwardLocal')
-        }
-        setTextareaValue(editor, remote)
-        common = remote
-        remoteUpdated = false
-        callback()
-      }
-
-      /** pattern match current state and exec corresponding sync operation */
-      const requestSync = () => {
-        if (isDebugging) {
-          console.info('[sync] start', getState())
-        }
-        if (remoteStale) {
-          if (operation !== 'idle') {
-            deferSync()
-            return
+      } catch (e: any) {
+        if (e?.errcode) {
+          switch (e.errcode) {
+            case ErrorCode.HASH_MISMATCH:
+              remoteStale = true
+              break
+            case ErrorCode.EXCEEDED_MAX_SIZE:
+              window.alert(`Note's size exceeded limit (100,000 characters).`)
+              break
           }
-          setOperation('pull')
-          vnode.attrs.onSaveStatusChange(true)
-          pullRemote(() => {
-            setOperation('idle')
-            vnode.attrs.onSaveStatusChange(false)
-            requestSync()
-          })
-          return
         }
-
-        if (localUpdated && remoteUpdated) {
-          if (isCompositing) {
-            deferSync()
-            return
-          }
-          rebaseLocal(requestSync)
-          return
-        }
-
-        if (localUpdated) {
-          if (operation !== 'idle' || isCompositing) {
-            deferSync()
-            return
-          }
-          setOperation('push')
-          vnode.attrs.onSaveStatusChange(true)
-          editor.disabled = false
-          pushLocal((error) => {
-            if (error) {
-              console.error(error)
-              setOperation('idle')
-              deferSync()
-              editor.disabled = true
-              return
-            }
-            setOperation('idle')
-            vnode.attrs.onSaveStatusChange(false)
-            editor.disabled = false
-            requestSync()
-          })
-          return
-        }
-
-        if (remoteUpdated) {
-          if (isCompositing) {
-            deferSync()
-            return
-          }
-          forwardLocal(requestSync)
-          return
-        }
+        callback(e)
       }
+    }
 
-      let syncTimer: number | undefined
-      const deferSync = () => {
-        if (isDebugging) {
-          console.info('deferSync')
-        }
-        clearTimeout(syncTimer)
-        syncTimer = window.setTimeout(requestSync, 100)
+    const pullRemote = (callback = noop) => {
+      if (isDebugging) {
+        console.info('operation:pullRemote')
       }
-
-      //-------------- event handlers --------------
-      const onCompositingStart = () => {
-        isCompositing = true
-      }
-      const onCompositingEnd = () => {
-        isCompositing = false
-      }
-      const onInput = () => {
-        localUpdated = true
-        deferSync()
-      }
-      const onKeyDown = (e: KeyboardEvent) => {
-        if (isCompositing) {
-          return
-        }
-        const assisted = assist(editor, e)
-        if (assisted) {
-          onInput()
-        }
-      }
-
-      const onNoteUpdate = (params: { h: number; p: Patch }) => {
-        const { h: hash, p: patch } = params
-        const note = applyPatch(remote, patch)
-        const verified = note != null && hashString(note) === hash
-        if (verified) {
-          remote = note!
-          remoteUpdated = true
+      this.props.noteService
+        .fetchNote(this.props.id)
+        .then(({ note }) => {
+          remote = note
           remoteStale = false
-        } else {
-          remoteStale = true
-        }
-        requestSync()
-      }
-
-      const onBeforeUnload = (e: BeforeUnloadEvent) => {
-        if (localUpdated) {
-          const message = 'Your change has not been saved, quit?'
-          e.returnValue = message // Gecko, Trident, Chrome 34+
-          return message // Gecko, WebKit, Chrome <34
-        }
-      }
-
-      let periodicSyncTimer: number
-      const start = async () => {
-        try {
-          const result = await fetchNote()
-          if (typeof result.note !== 'string') {
-            throw new UserError('Failed to fetwh note')
-          }
-
-          editor.value = result.note
-          common = result.note
-          remote = result.note
-
           remoteUpdated = false
-          localUpdated = false
-          remoteStale = false
+        })
+        .then(callback)
+        .catch(callback)
+    }
 
+    const rebaseLocal = (callback = noop) => {
+      if (isDebugging) {
+        console.info('operation:rebaseLocal')
+      }
+      let rebasedLocal = merge3(remote, common, this.textarea.value)
+      if (rebasedLocal == null) {
+        console.warn('failed to merge, discarding local note :(')
+        rebasedLocal = remote
+      }
+      setTextareaValue(this.textarea, rebasedLocal)
+      common = remote
+      remoteUpdated = false
+      localUpdated = true
+
+      callback()
+    }
+
+    const forwardLocal = (callback = noop) => {
+      if (isDebugging) {
+        console.info('operation:forwardLocal')
+      }
+      setTextareaValue(this.textarea, remote)
+      common = remote
+      remoteUpdated = false
+      callback()
+    }
+
+    /** pattern match current state and exec corresponding sync operation */
+    const requestSync = () => {
+      if (remoteStale) {
+        if (operation !== 'idle') {
+          deferSync()
+          return
+        }
+        setOperation('pull')
+        this.props.onSaveStatusChange(true)
+        pullRemote(() => {
           setOperation('idle')
-          isCompositing = false
+          this.props.onSaveStatusChange(false)
+          requestSync()
+        })
+        return
+      }
 
-          await subscribe()
-
-          editor.addEventListener('compositionstart', onCompositingStart)
-          editor.addEventListener('compositionend', onCompositingEnd)
-          editor.addEventListener('keydown', onKeyDown)
-          editor.addEventListener('input', onInput)
-          editor.addEventListener('focus', vnode.attrs.onFocus)
-          editor.addEventListener('blur', vnode.attrs.onBlur)
-          rpcClient.handle('noteUpdate', onNoteUpdate)
-          window.addEventListener('beforeunload', onBeforeUnload)
-          periodicSyncTimer = window.setInterval(() => {
-            subscribe() // in case server restarted and subscriptions are lost
-            deferSync()
-          }, 1000 * 60)
-
-          editor.disabled = false
-        } catch (error) {
-          showError(error)
+      if (localUpdated && remoteUpdated) {
+        if (isCompositing) {
+          deferSync()
+          return
         }
+        rebaseLocal(requestSync)
+        return
       }
 
-      teardown = () => {
-        editor.removeEventListener('compositionstart', onCompositingStart)
-        editor.removeEventListener('compositionend', onCompositingEnd)
-        editor.removeEventListener('keydown', onKeyDown)
-        editor.removeEventListener('input', onInput)
-        editor.removeEventListener('focus', vnode.attrs.onFocus)
-        editor.removeEventListener('blur', vnode.attrs.onBlur)
-        // socket.off('noteUpdate', onNoteUpdate)
-        window.removeEventListener('beforeunload', onBeforeUnload)
-        window.clearInterval(periodicSyncTimer)
-        // todo
-        // unsubscribe()
+      if (localUpdated) {
+        if (operation !== 'idle' || isCompositing) {
+          deferSync()
+          return
+        }
+        setOperation('push')
+        this.props.onSaveStatusChange(true)
+        this.textarea.disabled = false
+        pushLocal((error) => {
+          if (error) {
+            console.error(error)
+            setOperation('idle')
+            deferSync()
+            this.textarea.disabled = true
+            return
+          }
+          setOperation('idle')
+          this.props.onSaveStatusChange(false)
+          this.textarea.disabled = false
+          requestSync()
+        })
+        return
       }
 
-      start()
-    },
-    onbeforeupdate() {
-      // skip mithril update, we will update textarea ourselves
-      return false
-    },
-    onremove() {
-      teardown()
-    },
-    view() {
-      return m(
-        'textarea.editor',
-        { disabled: true, spellcheck: false },
-        '(Loading...)',
-      )
-    },
+      if (remoteUpdated) {
+        if (isCompositing) {
+          deferSync()
+          return
+        }
+        forwardLocal(requestSync)
+        return
+      }
+    }
+
+    let syncTimer: number | undefined
+    const deferSync = () => {
+      if (isDebugging) {
+        console.info('deferSync')
+      }
+      clearTimeout(syncTimer)
+      syncTimer = window.setTimeout(requestSync, 100)
+    }
+
+    //-------------- event handlers --------------
+    const onCompositingStart = () => {
+      isCompositing = true
+    }
+    const onCompositingEnd = () => {
+      isCompositing = false
+    }
+    const onInput = () => {
+      localUpdated = true
+      deferSync()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isCompositing) {
+        return
+      }
+      const assisted = assist(this.textarea, e)
+      if (assisted) {
+        onInput()
+      }
+    }
+
+    const onNoteUpdate = (params: { h: number; p: Patch }) => {
+      const { h: hash, p: patch } = params
+      const note = applyPatch(remote, patch)
+      const verified = note != null && hashString(note) === hash
+      if (verified) {
+        remote = note!
+        remoteUpdated = true
+        remoteStale = false
+      } else {
+        remoteStale = true
+      }
+      requestSync()
+    }
+    this.props.noteService.on('noteUpdate', onNoteUpdate)
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (localUpdated) {
+        const message = 'Your change has not been saved, quit?'
+        e.returnValue = message // Gecko, Trident, Chrome 34+
+        return message // Gecko, WebKit, Chrome <34
+      }
+    }
+
+    let periodicSyncTimer: number
+    const start = async () => {
+      try {
+        let note = (window as any).__note
+        if (note == null) {
+          const result = await this.props.noteService.fetchNote(this.props.id)
+          if (typeof result.note !== 'string') {
+            throw new UserError('Failed to fetch note')
+          }
+          note = result.note
+        }
+
+        this.textarea.value = note
+        common = note
+        remote = note
+
+        remoteUpdated = false
+        localUpdated = false
+        remoteStale = false
+
+        setOperation('idle')
+        isCompositing = false
+
+        await this.props.noteService.subscribe(this.props.id)
+
+        this.textarea.addEventListener('compositionstart', onCompositingStart)
+        this.textarea.addEventListener('compositionend', onCompositingEnd)
+        this.textarea.addEventListener('keydown', onKeyDown)
+        this.textarea.addEventListener('input', onInput)
+        window.addEventListener('beforeunload', onBeforeUnload)
+        periodicSyncTimer = window.setInterval(() => {
+          this.props.noteService.subscribe(this.props.id) // in case server restarted and subscriptions are lost
+          deferSync()
+        }, 1000 * 60)
+
+        this.textarea.disabled = false
+      } catch (error) {
+        showError(error)
+      }
+    }
+
+    this.teardown = () => {
+      this.textarea.removeEventListener('compositionstart', onCompositingStart)
+      this.textarea.removeEventListener('compositionend', onCompositingEnd)
+      this.textarea.removeEventListener('keydown', onKeyDown)
+      this.textarea.removeEventListener('input', onInput)
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      window.clearInterval(periodicSyncTimer)
+
+      this.props.noteService.off('noteUpdate', onNoteUpdate)
+      this.props.noteService.unsubscribe(this.props.id)
+    }
+
+    start()
+  }
+
+  destroy() {
+    this.teardown()
   }
 }

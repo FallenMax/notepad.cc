@@ -1,4 +1,4 @@
-export const generateId = (len = 8) => {
+export function generatePageId(len = 8) {
   const charset = 'abcdefghijklmnopqrstuvwxyz'
   let chars: string[] = []
   for (let index = 0; index < len; index++) {
