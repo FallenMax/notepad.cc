@@ -13,6 +13,13 @@ export interface Note {
   note: string
 }
 
+interface PatchNodeOptions {
+  id: string
+  patch: Patch
+  hash: Hash
+  source?: string
+}
+
 export class NoteService extends Disposable {
   private table: Table<Note>
 
@@ -21,21 +28,26 @@ export class NoteService extends Disposable {
     this.table = new Table<Note>(this.connection, 'notes')
   }
 
-  async patchNote({
+  private patchPromise = Promise.resolve() as unknown as ReturnType<
+    NoteService['doPatchNote']
+  >
+  async patchNote(options: PatchNodeOptions) {
+    // Queue changes to avoid race condition
+    await Promise.allSettled([this.patchPromise])
+    this.patchPromise = this.doPatchNote(options)
+    return this.patchPromise
+  }
+  private async doPatchNote({
     id,
     patch,
     hash,
     source,
-  }: {
-    id: string
-    patch: Patch
-    hash: Hash
-    source?: string
-  }): Promise<{ hash: number; patch: Patch }> {
+  }: PatchNodeOptions): Promise<{ hash: number; patch: Patch }> {
     const existNote = await this.getNote(id)
+
     const result = applyPatch(existNote.note, patch)
     if (result == null || hash !== hashString(result)) {
-      throw new UserError(ErrorCode.UNKNOWN)
+      throw new UserError(ErrorCode.HASH_MISMATCH)
     }
     if (result.length > NOTE_MAX_SIZE) {
       throw new UserError(ErrorCode.EXCEEDED_MAX_SIZE)
@@ -46,7 +58,6 @@ export class NoteService extends Disposable {
     } else {
       await this.table.upsert({ _id: id }, { note: result, _id: id })
     }
-
     return { hash, patch }
   }
 
