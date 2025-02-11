@@ -8,6 +8,8 @@ body {
   line-height: 1.5;
   color: var(--text-color);
   height: 100%;
+  height: -webkit-fill-available;
+  min-height: -webkit-fill-available;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -137,5 +139,5 @@ main {
 }
 
 footer {
-  height: 18px;
+  height: calc(18px + env(safe-area-inset-bottom, 0px));
 }
