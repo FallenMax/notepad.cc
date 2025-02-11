@@ -12,6 +12,7 @@ body {
   margin: 0;
   padding: 0;
 }
+
 html {
   --background-pattern: url('./assets/bg.png');
   --background-color: rgb(237, 238, 240);
@@ -59,15 +60,13 @@ body {
   height: 90vh;
   max-height: calc(100vh - 24px);
 }
-@media (max-width: 800px) {
+
+html.mobile {
   .wrapper {
-    max-height: calc(100vh - 100px);
-  }
-}
-@media (display-mode: standalone) {
-  .wrapper {
-    height: 100vh;
-    max-height: calc(100vh);
+    height: calc(100vh - 12px);
+    height: -webkit-fill-available;
+    max-height: calc(100vh - 12px);
+    max-height: -webkit-fill-available;
   }
 }
 
@@ -97,14 +96,17 @@ main {
   flex-grow: 1;
 
   position: relative;
+  &::before,
+  &::after,
+  textarea {
+    background-color: var(--text-bg);
+    border-radius: 4px;
+    border: 1px solid var(--text-border);
+  }
   &::before {
     content: '';
     display: block;
     inset: 4px 4px -4px 4px;
-    background-color: var(--text-bg);
-    border-radius: 4px;
-    border: 1px solid var(--text-border);
-    /* box-shadow: 0px 0px 1px 0px #a9a9a9; */
     position: absolute;
     z-index: 1;
   }
@@ -112,9 +114,6 @@ main {
     content: '';
     display: block;
     inset: 2px 2px -2px 2px;
-    background-color: var(--text-bg);
-    border-radius: 4px;
-    border: 1px solid var(--text-border);
     position: absolute;
     z-index: 2;
   }
@@ -122,12 +121,8 @@ main {
     z-index: 3;
     display: flex;
     flex-grow: 1;
-    background-color: var(--text-bg);
-    border-radius: 4px;
-    border: 1px solid var(--text-border);
     position: relative;
-  }
-  textarea {
+
     resize: none;
     padding: 1em;
     color: var(--text-fg);

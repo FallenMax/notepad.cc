@@ -3,6 +3,7 @@ import { generatePageId } from '../common/lib/generate_id'
 import { Editor } from './component/editor'
 import { RpcClient } from './lib/rpc_client'
 import { NoteService } from './service/note.service'
+import { isMobile } from './util/env'
 
 function $(selector: string) {
   return document.querySelector(selector) as HTMLElement
@@ -17,6 +18,10 @@ class App {
   private $editor = $('.editor')!
 
   constructor() {
+    if (isMobile) {
+      document.documentElement.classList.add('mobile')
+    }
+
     this.rpcClient = new RpcClient<ServerAPI, ClientAPI>({
       noteUpdate: (payload) => {
         this.noteService.emit('noteUpdate', payload)
