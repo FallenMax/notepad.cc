@@ -1,6 +1,7 @@
 import { ClientAPI, ServerAPI } from '../common/api.type'
 import { generatePageId } from '../common/lib/generate_id'
 import { Editor } from './component/editor'
+import { MobileToolbar } from './component/mobile_toolbar'
 import { RpcClient } from './lib/rpc_client'
 import { NoteService } from './service/note.service'
 import { isMobile } from './util/env'
@@ -15,12 +16,13 @@ class App {
   private editor: Editor
   private $saveStatus = $('.save-status')!
   private $networkStatus = $('.network-status')!
-  private $editor = $('.editor')!
+  private mobileToolbar: MobileToolbar | undefined
 
   constructor() {
     if (isMobile) {
       document.documentElement.classList.add('mobile')
     }
+    const $editor = $('.editor')! as HTMLTextAreaElement
 
     this.rpcClient = new RpcClient<ServerAPI, ClientAPI>({
       noteUpdate: (payload) => {
@@ -28,11 +30,15 @@ class App {
       },
     })
     this.noteService = new NoteService(this.rpcClient)
-    this.editor = new Editor(this.$editor as HTMLTextAreaElement, {
+    this.editor = new Editor($editor, {
       id,
       noteService: this.noteService,
       onSaveStatusChange: this.handleSaveStatusChange,
     })
+
+    if (isMobile) {
+      this.mobileToolbar = new MobileToolbar($('.mobile-toolbar')!, this.editor)
+    }
   }
 
   init() {
@@ -44,6 +50,7 @@ class App {
     })
 
     this.editor.init()
+    this.mobileToolbar?.init()
   }
 
   private handleSaveStatusChange = (isSaving: boolean) => {

@@ -1,8 +1,8 @@
 import hashString from 'string-hash'
 import { ErrorCode } from '../../common/error'
 import { applyPatch, createPatch, merge3, Patch } from '../../common/lib/diff3'
-import { assist } from '../lib/assist/assist'
-import { END, START } from '../lib/assist/assistor.types'
+import { getTransformer } from '../lib/transformer/transformer'
+import { END, START, Transformer } from '../lib/transformer/transformer.type'
 import { NoteService } from '../service/note.service'
 import { isDebugging } from '../util/env'
 import { UserError } from '../util/error'
@@ -49,11 +49,12 @@ export interface EditorProps {
 }
 
 export class Editor {
-  private textarea: HTMLTextAreaElement
+  $textarea: HTMLTextAreaElement
   private teardown: () => void = () => {}
+  private onInput = () => {}
 
   constructor(textarea: HTMLTextAreaElement, private props: EditorProps) {
-    this.textarea = textarea
+    this.$textarea = textarea
   }
 
   async init() {
@@ -74,11 +75,11 @@ export class Editor {
       operation = op
       if (op === 'idle') {
         window.clearTimeout(disableTimer)
-        this.textarea.disabled = false
+        this.$textarea.disabled = false
       } else {
         window.clearTimeout(disableTimer)
         disableTimer = window.setTimeout(() => {
-          this.textarea.disabled = true
+          this.$textarea.disabled = true
         }, 1000 * 10)
       }
     }
@@ -92,7 +93,7 @@ export class Editor {
         console.info('operation:pushLocal')
       }
       try {
-        const current = this.textarea.value
+        const current = this.$textarea.value
         const patch = createPatch(remote, current)
         const hash = hashString(current)
 
@@ -102,7 +103,7 @@ export class Editor {
         common = current
         remoteUpdated = false
         remoteStale = false
-        localUpdated = current !== this.textarea.value
+        localUpdated = current !== this.$textarea.value
         callback()
       } catch (e: any) {
         if (e?.errcode) {
@@ -138,12 +139,12 @@ export class Editor {
       if (isDebugging) {
         console.info('operation:rebaseLocal')
       }
-      let rebasedLocal = merge3(remote, common, this.textarea.value)
+      let rebasedLocal = merge3(remote, common, this.$textarea.value)
       if (rebasedLocal == null) {
         console.warn('failed to merge, discarding local note :(')
         rebasedLocal = remote
       }
-      setTextareaValue(this.textarea, rebasedLocal)
+      setTextareaValue(this.$textarea, rebasedLocal)
       common = remote
       remoteUpdated = false
       localUpdated = true
@@ -155,7 +156,7 @@ export class Editor {
       if (isDebugging) {
         console.info('operation:forwardLocal')
       }
-      setTextareaValue(this.textarea, remote)
+      setTextareaValue(this.$textarea, remote)
       common = remote
       remoteUpdated = false
       callback()
@@ -194,18 +195,18 @@ export class Editor {
         }
         setOperation('push')
         this.props.onSaveStatusChange(true)
-        this.textarea.disabled = false
+        this.$textarea.disabled = false
         pushLocal((error) => {
           if (error) {
             console.error(error)
             setOperation('idle')
             deferSync()
-            this.textarea.disabled = true
+            this.$textarea.disabled = true
             return
           }
           setOperation('idle')
           this.props.onSaveStatusChange(false)
-          this.textarea.disabled = false
+          this.$textarea.disabled = false
           requestSync()
         })
         return
@@ -241,13 +242,19 @@ export class Editor {
       localUpdated = true
       deferSync()
     }
+    this.onInput = onInput
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (isCompositing) {
         return
       }
-      const assisted = assist(this.textarea, e)
-      if (assisted) {
-        onInput()
+
+      const transformer = getTransformer(e)
+      if (transformer) {
+        const applied = this.applyTransformer(transformer)
+        if (applied) {
+          e.preventDefault()
+        }
       }
     }
 
@@ -286,7 +293,7 @@ export class Editor {
           note = result.note
         }
 
-        this.textarea.value = note
+        this.$textarea.value = note
         common = note
         remote = note
 
@@ -299,27 +306,27 @@ export class Editor {
 
         await this.props.noteService.subscribe(this.props.id)
 
-        this.textarea.addEventListener('compositionstart', onCompositingStart)
-        this.textarea.addEventListener('compositionend', onCompositingEnd)
-        this.textarea.addEventListener('keydown', onKeyDown)
-        this.textarea.addEventListener('input', onInput)
+        this.$textarea.addEventListener('compositionstart', onCompositingStart)
+        this.$textarea.addEventListener('compositionend', onCompositingEnd)
+        this.$textarea.addEventListener('keydown', onKeyDown)
+        this.$textarea.addEventListener('input', onInput)
         window.addEventListener('beforeunload', onBeforeUnload)
         periodicSyncTimer = window.setInterval(() => {
           this.props.noteService.subscribe(this.props.id) // in case server restarted and subscriptions are lost
           deferSync()
         }, 1000 * 60)
 
-        this.textarea.disabled = false
+        this.$textarea.disabled = false
       } catch (error) {
         showError(error)
       }
     }
 
     this.teardown = () => {
-      this.textarea.removeEventListener('compositionstart', onCompositingStart)
-      this.textarea.removeEventListener('compositionend', onCompositingEnd)
-      this.textarea.removeEventListener('keydown', onKeyDown)
-      this.textarea.removeEventListener('input', onInput)
+      this.$textarea.removeEventListener('compositionstart', onCompositingStart)
+      this.$textarea.removeEventListener('compositionend', onCompositingEnd)
+      this.$textarea.removeEventListener('keydown', onKeyDown)
+      this.$textarea.removeEventListener('input', onInput)
       window.removeEventListener('beforeunload', onBeforeUnload)
       window.clearInterval(periodicSyncTimer)
 
@@ -332,5 +339,34 @@ export class Editor {
 
   destroy() {
     this.teardown()
+  }
+
+  applyTransformer(transformer: Transformer): boolean {
+    const $textarea = this.$textarea
+
+    const value = $textarea.value
+    const start = $textarea.selectionStart
+    const end = $textarea.selectionEnd
+
+    const state = [
+      value.substring(0, start),
+      START,
+      value.substring(start, end),
+      END,
+      value.substring(end),
+    ].join('')
+
+    const transformed = transformer(state)
+
+    if (transformed != null) {
+      const [before, _start, between, _end, after] = transformed.split(
+        new RegExp(`(${START}|${END})`, 'mg'),
+      )
+      $textarea.value = [before, between, after].join('')
+      $textarea.setSelectionRange(before.length, before.length + between.length)
+      this.onInput()
+      return true
+    }
+    return false
   }
 }

@@ -1,22 +1,26 @@
-import { BULLET, CURSOR, Transformer } from '../assistor.types'
+import { BULLET, CURSOR, SELECTION, Transformer } from '../transformer.type'
 
-const BULLET_LINE_REG = new RegExp(`^( *)(${BULLET})?(.*)${CURSOR}(.*)$`, 'm')
+const BULLET_LINE_REG = new RegExp(
+  `^( *)(${BULLET})?(.*)${SELECTION}(.*)$`,
+  'm',
+)
 
 // ===
-//   - xxxIyyy
+//   - xxx[yyyy]zzz
 // ===
 //   - xxx
-//   - Iyyy
+//   - []zzz
 // ===
 
 export const addNewLine: Transformer = (state) => {
   const match = BULLET_LINE_REG.exec(state)
   if (match) {
     const [matched, leadingSpaces, bullet, beforeCursor, afterCursor] = match
+
     if (leadingSpaces === '' && bullet === undefined) return undefined
     return state.replace(
       matched,
-      beforeCursor === ' ' && afterCursor === ''
+      beforeCursor === ' ' && afterCursor === '' // - []    remove bullet
         ? `${CURSOR}`
         : bullet === undefined
         ? `${leadingSpaces}${beforeCursor}\n${leadingSpaces}${CURSOR}${afterCursor}`

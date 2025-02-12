@@ -1,9 +1,9 @@
-import { CURSOR, Transformer } from '../assistor.types'
+import { CURSOR, Transformer } from '../transformer.type'
 
 // ===
-//       I
+//       []
 // ===
-// I
+// []
 // ===
 
 export const backDeleteToStart: Transformer = (state) => {
