@@ -249,7 +249,9 @@ export class Editor {
         return
       }
 
-      const transformer = getTransformer(e)
+      const { selectionStart, selectionEnd } = this.$textarea
+      const hasSelection = selectionStart !== selectionEnd
+      const transformer = getTransformer(e, hasSelection)
       if (transformer) {
         const applied = this.applyTransformer(transformer)
         if (applied) {

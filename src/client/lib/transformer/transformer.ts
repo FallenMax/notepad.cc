@@ -5,7 +5,10 @@ import { deindent } from './transformers/deindent'
 import { indent } from './transformers/indent'
 import { toggleList } from './transformers/toggle_list'
 
-export function getTransformer(e: KeyboardEvent): Transformer | undefined {
+export function getTransformer(
+  e: KeyboardEvent,
+  hasSelection: boolean,
+): Transformer | undefined {
   const { key, shiftKey } = e
   let transformer: Transformer | undefined
   if (key === 'Enter') {
@@ -15,7 +18,7 @@ export function getTransformer(e: KeyboardEvent): Transformer | undefined {
   } else if (key === 'Tab') {
     transformer = shiftKey ? deindent : indent
   } else if (key === '-') {
-    transformer = toggleList
+    if (hasSelection) transformer = toggleList
   }
 
   return transformer
